@@ -93,11 +93,13 @@ rule target:
     input:
         'output/030_optim/compare_defaults/optimised_samplestats_combined.csv',
         expand('output/040_stacks/{individual}.alleles.tsv.gz',
-               individual="Rpoa67")
+               individual="Rpoa67"),
+        expand('output/022_fastqc/{individual}_fastqc.zip',
+               individual=all_indivs)
 
 rule ustacks:
     input:
-        fq = 'output/020_demux/{individual}.fq.gz',
+        fq = 'output/021_filtered/{individual}.fq.gz',
         pickle = 'output/010_config/individual_i.p'
     params:
         wd = 'output/040_stacks',
@@ -131,7 +133,7 @@ rule ustacks:
 rule compare_defaults:
     input:
         'output/030_optim/stats_n/samplestats_combined.csv',
-        expand('output/020_demux/{individual}.fq.gz',
+        expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs),
         popmap = 'output/010_config/full_popmap.txt'
     output:
@@ -140,7 +142,7 @@ rule compare_defaults:
         50
     params:
         outdir = 'output/030_optim',
-        indir = 'output/020_demux'
+        indir = 'output/021_filtered'
     log:
         'output/logs/030_optim/compare_defaults.log'
     shell:
@@ -151,7 +153,7 @@ rule compare_defaults:
         '-n 3 '
         '-o {params.outdir} '
         '--individuals 8 '
-        '--replicates 2 '
+        '--replicates 3 '
         '--threads {threads} '
         '{input.popmap} '
         '{params.indir} '
@@ -161,7 +163,7 @@ rule compare_defaults:
 rule optim_n:
     input:
         'output/030_optim/stats_Mm/samplestats_combined.csv',
-        expand('output/020_demux/{individual}.fq.gz',
+        expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs),
         popmap = 'output/010_config/full_popmap.txt'
     output:
@@ -170,7 +172,7 @@ rule optim_n:
         50
     params:
         outdir = 'output/030_optim',
-        indir = 'output/020_demux'
+        indir = 'output/021_filtered'
     log:
         'output/logs/030_optim/optim_n.log'
     shell:
@@ -180,16 +182,17 @@ rule optim_n:
         '-M 3 '
         '-o {params.outdir} '
         '--individuals 8 '
-        '--replicates 2 '
+        '--replicates 3 '
         '--threads {threads} '
         '{input.popmap} '
         '{params.indir} '
         '&> {log} '
 
+
 rule optim_mM:
     input:
         'output/030_optim/filtering/replicate_1_popmap.txt',
-        expand('output/020_demux/{individual}.fq.gz',
+        expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs),
         popmap = 'output/010_config/full_popmap.txt'
     output:
@@ -198,7 +201,7 @@ rule optim_mM:
         50
     params:
         outdir = 'output/030_optim',
-        indir = 'output/020_demux'
+        indir = 'output/021_filtered'
     log:
         'output/logs/030_optim/optim_mM.log'
     shell:
@@ -206,7 +209,7 @@ rule optim_mM:
         '--mode optim_Mm '
         '-o {params.outdir} '
         '--individuals 8 '
-        '--replicates 2 '
+        '--replicates 3 '
         '--threads {threads} '
         '{input.popmap} '
         '{params.indir} '
@@ -215,7 +218,7 @@ rule optim_mM:
 
 rule optim_setup:
     input:
-        expand('output/020_demux/{individual}.fq.gz',
+        expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs),
         popmap = 'output/010_config/full_popmap.txt'
     output:
@@ -224,7 +227,7 @@ rule optim_setup:
         50
     params:
         outdir = 'output/030_optim',
-        indir = 'output/020_demux'
+        indir = 'output/021_filtered'
     log:
         'output/logs/030_optim/optim_setup.log'
     shell:
@@ -257,7 +260,7 @@ rule generate_popmap:
 
 rule enumerate_samples:
     input:
-        expand('output/020_demux/{individual}.fq.gz',
+        expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs)
     output:
         pickle = 'output/010_config/individual_i.p'
@@ -270,10 +273,26 @@ rule enumerate_samples:
         with open(output.pickle, 'wb+') as f:
             pickle.dump(individual_i, f)
 
-rule filter_targets:
+rule fastqc:
     input:
         expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs)
+    output:
+        expand('output/022_fastqc/{individual}_fastqc.zip',
+               individual=all_indivs)
+    params:
+        outdir='output/022_fastqc'
+    threads:
+        10
+    log:
+        'output/logs/022_fastqc/fastqc.log'
+    shell:
+        'fastqc '
+        '-o {params.outdir} '
+        '-t {threads} '
+        '{input} '
+        '&> {log}'
+
 
 rule filter_adapters:
     input:
