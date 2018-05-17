@@ -270,6 +270,40 @@ rule enumerate_samples:
         with open(output.pickle, 'wb+') as f:
             pickle.dump(individual_i, f)
 
+rule filter_targets:
+    input:
+        expand('output/021_filtered/{individual}.fq.gz',
+               individual=all_indivs)
+
+rule filter_adapters:
+    input:
+        FQ = 'output/020_demux/{individual}.fq.gz'
+    output:
+        FQ = 'output/021_filtered/{individual}.fq.gz'
+        stats = 'output/021_filtered/stats/{individual}.txt'
+    params:
+        adapters = 'data/bbduk_adapters.fa'
+    threads:
+        10
+    log:
+        'output/logs/021_filtered/{individual}.log'
+    benchmark: 
+        'output/benchmarks/021_filtered/{individual}.txt'
+    shell:
+        'bbduk.sh '
+        'in={input.FQ} '
+        'outnonmatch={output.FQ} '
+        'ref={params.adapters} '
+        'interleaved=f '
+        'stats={output.stats} '
+        'overwrite=t '
+        'ziplevel=9 '
+        'ktrim=r k=23 mink=11 hdist=1 '
+        'findbestmatch=t '
+        'threads={threads} '
+        'minlength=91 '
+        '2> {log}'
+
 
 for fc in all_fcs:
     rule:
