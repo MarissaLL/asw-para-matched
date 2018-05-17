@@ -279,7 +279,7 @@ rule filter_adapters:
     input:
         FQ = 'output/020_demux/{individual}.fq.gz'
     output:
-        FQ = 'output/021_filtered/{individual}.fq.gz'
+        FQ = 'output/021_filtered/{individual}.fq.gz',
         stats = 'output/021_filtered/stats/{individual}.txt'
     params:
         adapters = 'data/bbduk_adapters.fa'
