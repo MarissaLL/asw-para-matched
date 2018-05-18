@@ -97,6 +97,14 @@ rule target:
         expand('output/022_fastqc/{individual}_fastqc.zip',
                individual=all_indivs)
 
+rule ustacks_target:
+    input:
+        expand('output/040_stacks/{individual}.alleles.tsv.gz',
+        individual=all_indivs)
+    priority:
+        1
+
+
 rule ustacks:
     input:
         fq = 'output/021_filtered/{individual}.fq.gz',
@@ -110,7 +118,7 @@ rule ustacks:
         'output/040_stacks/{individual}.snps.tsv.gz',
         'output/040_stacks/{individual}.tags.tsv.gz'
     threads:
-        60
+        1
     log:
         'output/logs/040_stacks/{individual}_ustacks.log'
     benchmark:
