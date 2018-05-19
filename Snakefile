@@ -112,7 +112,7 @@ rule ustacks:
     params:
         wd = 'output/040_stacks',
         m = '3',
-        M = '3'
+        M = '4'
     output:
         'output/040_stacks/{individual}.alleles.tsv.gz',
         'output/040_stacks/{individual}.snps.tsv.gz',
@@ -157,8 +157,8 @@ rule compare_defaults:
         'stacks_parameters '
         '--mode compare_defaults '
         '-m 3 '
-        '-M 3 '
-        '-n 3 '
+        '-M 4 '
+        '-n 5 '
         '-o {params.outdir} '
         '--individuals 8 '
         '--replicates 3 '
@@ -187,7 +187,7 @@ rule optim_n:
         'stacks_parameters '
         '--mode optim_n '
         '-m 3 '
-        '-M 3 '
+        '-M 4 '
         '-o {params.outdir} '
         '--individuals 8 '
         '--replicates 3 '
