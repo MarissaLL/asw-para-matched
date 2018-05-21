@@ -91,9 +91,9 @@ all_indivs = sorted(set(y for x in all_fcs for y in fc_to_indiv[x]))
 
 rule target:
     input:
-        'output/030_optim/compare_defaults/optimised_samplestats_combined.csv',
+       # 'output/030_optim/compare_defaults/optimised_samplestats_combined.csv',
         expand('output/040_stacks/{individual}.alleles.tsv.gz',
-               individual="Rpoa67"),
+               individual=all_indivs),
         expand('output/022_fastqc/{individual}_fastqc.zip',
                individual=all_indivs)
 
@@ -294,21 +294,40 @@ rule fastqc:
         '{input} '
         '&> {log}'
 
-rule filtered_counts:
-    input:
-        'output/021_filtered/{individual}.fq.gz'
-    output:
-        'output/021_filtered/filtered_counts/{individual}.csv'
-    shell:
-        'printf "%s,%i\n" {wildcards.individual} $(zcat {input} | wc -l) > {output}'
+# rule create_flagfiles:
+#     input:
+#         'output/021_filtered/filtered_counts/combined_counts.csv'
+#     output:
+#         dynamic('output/010_config/ustacks_individuals/ustacks_individuals.txt')
+#     params:
+#         outdir = 'output/010_config/ustacks_individuals'
+#     script:
+#         'src/create_flagfiles.R'
+    
 
+# rule cat_counts:
+#     input:
+#         expand('output/021_filtered/filtered_counts/{individual}.csv',
+#             individual=all_indivs)
+#     output:
+#         'output/021_filtered/filtered_counts/combined_counts.csv'
+#     shell:
+#         'cat {input} > {output}'
+
+# rule filtered_counts:
+#     input:
+#         'output/021_filtered/{individual}.fq.gz'
+#     output:
+#         'output/021_filtered/filtered_counts/{individual}.csv'
+#     shell:
+#         'printf "%s,%i\\n" {wildcards.individual} $(zcat {input} | wc -l) > {output}'
 
 rule filter_adapters:
     input:
         FQ = 'output/020_demux/{individual}.fq.gz'
     output:
         kept_FQ = 'output/021_filtered/{individual}.fq.gz',
-        discarded_FQ = 'output/021_filtered/discarded_FQ/{individual}.fq.gz'
+        discarded_FQ = 'output/021_filtered/discarded_FQ/{individual}.fq.gz',
         stats = 'output/021_filtered/stats/{individual}.txt',
         gc_hist = 'output/021_filtered/gc_hist/{individual}.txt'
     params:
@@ -336,7 +355,6 @@ rule filter_adapters:
         'threads={threads} '
         'minlength=91 '
         '2> {log}'
-
 
 for fc in all_fcs:
     rule:
