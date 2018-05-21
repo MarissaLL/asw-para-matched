@@ -97,13 +97,6 @@ rule target:
         expand('output/022_fastqc/{individual}_fastqc.zip',
                individual=all_indivs)
 
-rule ustacks_target:
-    input:
-        expand('output/040_stacks/{individual}.alleles.tsv.gz',
-        individual=all_indivs)
-    priority:
-        1
-
 
 rule ustacks:
     input:
@@ -301,13 +294,23 @@ rule fastqc:
         '{input} '
         '&> {log}'
 
+rule filtered_counts:
+    input:
+        'output/021_filtered/{individual}.fq.gz'
+    output:
+        'output/021_filtered/filtered_counts/{individual}.csv'
+    shell:
+        'printf "%s,%i\n" {wildcards.individual} $(zcat {input} | wc -l) > {output}'
+
 
 rule filter_adapters:
     input:
         FQ = 'output/020_demux/{individual}.fq.gz'
     output:
-        FQ = 'output/021_filtered/{individual}.fq.gz',
-        stats = 'output/021_filtered/stats/{individual}.txt'
+        kept_FQ = 'output/021_filtered/{individual}.fq.gz',
+        discarded_FQ = 'output/021_filtered/discarded_FQ/{individual}.fq.gz'
+        stats = 'output/021_filtered/stats/{individual}.txt',
+        gc_hist = 'output/021_filtered/gc_hist/{individual}.txt'
     params:
         adapters = 'data/bbduk_adapters.fa'
     threads:
@@ -319,7 +322,8 @@ rule filter_adapters:
     shell:
         'bbduk.sh '
         'in={input.FQ} '
-        'outnonmatch={output.FQ} '
+        'outnonmatch={output.kept_FQ} '
+        'outmatch={output.discarded_FQ} '
         'ref={params.adapters} '
         'interleaved=f '
         'stats={output.stats} '
@@ -327,6 +331,8 @@ rule filter_adapters:
         'ziplevel=9 '
         'ktrim=r k=23 mink=11 hdist=1 '
         'findbestmatch=t '
+        'gchist={output.gc_hist} '
+        'gcbins=100 '
         'threads={threads} '
         'minlength=91 '
         '2> {log}'
