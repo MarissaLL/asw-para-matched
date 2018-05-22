@@ -4,7 +4,7 @@ library(tidyverse)
 
 
 #############
-# Functions #
+# FUNCTIONS #
 #############
 
 parse_bbduk_stats <- function(x){
@@ -17,30 +17,31 @@ my_tibble <- read_delim(x,
 spread(my_tibble, variable, value, convert = TRUE)
 }
 
-
-
-# Globals
+###########
+# GLOBALS #
+###########
 
 stats_files <- snakemake@input[["stats_file"]]
 output_file <- snakemake@output[["stats_file"]]
 log_file <- snakemake@log[[1]]
 
-# Main
+########
+# MAIN #
+########
 
 # set log
 log <- file(log_file, open = "wt")
 sink(log, type = "message")
 sink(log, append = TRUE, type = "output")
 
-
 bbduk_stats_list <- lapply(stats_files, parse_bbduk_stats)
 
 bbduk_stats <- bind_rows(bbduk_stats_list) %>% 
   rename(`#Discarded` = `#Matched`) %>% 
   mutate(`#Kept` = `#Total`-`#Discarded`,
-         `#Individual` = sub(".fq.gz","",basename(`#File`)))
+         `#Individual` = sub(".fq.gz", "", basename(`#File`)))
 
 write_csv(bbduk_stats, path = output_file)
   
-  # write log
-  sessionInfo()
+# write log
+sessionInfo()

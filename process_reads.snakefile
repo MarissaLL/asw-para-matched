@@ -59,11 +59,6 @@ def read_keydata_and_write_config(key_file, outdir):
                               header=False,
                               index=False)
 
-
-
-
-
-
 ###########
 # GLOBALS #
 ###########
@@ -80,7 +75,6 @@ fc_to_indiv, fc_to_readfile = generate_fc_dicts(
     data_dir)
 all_fcs = list(set(fc_to_indiv.keys()))
 all_indivs = sorted(set(y for x in all_fcs for y in fc_to_indiv[x]))
-
 
 #########
 # RULES #
@@ -109,7 +103,6 @@ rule generate_popmap:
                       sep='\t',
                       header=False,
                       index=False)
-
 
 rule fastqc:
     input:
@@ -141,7 +134,6 @@ rule combine_stats:
         'output/logs/021_filtered/combined_stats.log'
     script:
         'src/combine_stats.R'
-
 
 rule filter_adapters:
     input:
@@ -176,7 +168,6 @@ rule filter_adapters:
         'threads={threads} '
         'minlength=91 '
         '2> {log}'
-
 
 for fc in all_fcs:
     rule:

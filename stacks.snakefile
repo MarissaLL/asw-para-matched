@@ -5,7 +5,8 @@ import pandas
 import re
 
 #############
-# Functions #
+# FUNCTIONS #
+#############
 
 
 def get_ustacks_individuals(counts_file): 
@@ -13,13 +14,21 @@ def get_ustacks_individuals(counts_file):
 	indivs = sorted(set(counts_data.loc[counts_data['#Kept'] >1e6]['#Individual']))
 	return(indivs)
 
-# Globals
+###########
+# GLOBALS #
+###########
+
 counts_file = 'output/010_config/individual_counts.csv'
 
-# Setup
+#########
+# SETUP #
+#########
+
 ustacks_individuals = get_ustacks_individuals(counts_file)
 
-# Rules
+#########
+# RULES #
+#########
 
 subworkflow process_reads:
     snakefile: 'process_reads.snakefile'
@@ -27,8 +36,18 @@ subworkflow process_reads:
 
 rule target:
     input:
-        expand('output/041_ustacks_coverage/{individual}.csv',
-               individual=ustacks_individuals)
+        'output/010_config/combined_coverage_ustacks.csv'
+
+rule combine_coverage:
+	input:
+		coverage_file = expand('output/041_ustacks_coverage/{individual}.csv',
+			individual=ustacks_individuals)
+	output:
+		coverage_file = 'output/010_config/combined_coverage_ustacks.csv'
+	log:
+		'output/logs/041_ustacks_coverage/combine_coverage.log'
+	script:
+		'src/combine_coverage.R'
 
 rule calculate_coverage:
 	input:
@@ -39,7 +58,6 @@ rule calculate_coverage:
 		'output/logs/041_ustacks_coverage/{individual}.log'
 	script:
 		'src/calculate_coverage.R'
-
 
 rule ustacks:
     input:

@@ -2,9 +2,9 @@
 
 library(tidyverse)
 
-
-# Functions
-
+#############
+# FUNCTIONS #
+#############
 
 calculate_coverage <- function(tags_file){
   my_tags <- read_tsv(tags_file, 
@@ -14,36 +14,33 @@ calculate_coverage <- function(tags_file){
   
   kept_loci <- unique(filter(my_tags, X8 != 1 & X9 != 1)$X2)
   
-  
-  
   total_reads <- length(unique(filter(my_tags, X2 %in% kept_loci & X5 != "")$X5))
-  
   
   final_coverage <- filter(my_tags, X2 %in% kept_loci & X5 != "") %>% 
     group_by(X2) %>% 
     summarise(reads = length(unique(X5)))
-  
   
   tibble(individual = individual,
          final_coverage_mean = mean(final_coverage$reads),
          n_reads = total_reads)
 }
 
-# Globals
+###########
+# GLOBALS #
+###########
 
 tags_file <- snakemake@input[["tags"]]
 output_file <- snakemake@output[["csv"]]
 log_file <- snakemake@log[[1]]
 
-
-
-# Main
+########
+# MAIN #
+########
 
 # set log
 log <- file(log_file, open = "wt")
 sink(log, type = "message")
 sink(log, append = TRUE, type = "output")
-
 
 cov_stats <- calculate_coverage(tags_file)
 

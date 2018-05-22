@@ -17,8 +17,7 @@ def resolve_path(x):
 # RULES #
 #########
 
-,
-        expand('output/022_fastqc/{individual}_fastqc.zip',
+expand('output/022_fastqc/{individual}_fastqc.zip',
                individual=all_indivs)
 
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
+
 import os
 import pandas
-
-
 
 #############
 # FUNCTIONS #
@@ -41,7 +40,6 @@ def generate_fc_dicts(key_file, data_dir):
                                 if name in os.path.basename(x)][0]
     return(fc_to_indiv, fc_to_readfile)
 
-    
 ###########
 # GLOBALS #
 ###########
@@ -62,6 +60,7 @@ all_indivs = sorted(set(y for x in all_fcs for y in fc_to_indiv[x]))
 #########
 # RULES #
 #########
+
 subworkflow process_reads:
     snakefile: 'process_reads.snakefile'
 
