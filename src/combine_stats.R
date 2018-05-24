@@ -7,6 +7,14 @@ library(tidyverse)
 # FUNCTIONS #
 #############
 
+get_mean_gc <-function(x) {
+  my_mean <- read_delim(x, delim = "\t",  col_names = c("GC","count")) %>% 
+    filter(GC == "#Mean") %>% 
+    get("count",.) %>% 
+    as.numeric()
+  return(tibble(mean_gc=my_mean))
+}
+
 parse_bbduk_stats <- function(x){
 my_tibble <- read_delim(x, 
                         delim = "\t", 
@@ -21,9 +29,15 @@ spread(my_tibble, variable, value, convert = TRUE)
 # GLOBALS #
 ###########
 
-stats_files <- snakemake@input[["stats_file"]]
+stats_files <-snakemake@input[["stats_file"]]
+  
+gc_files<-snakemake@input[["gc_file"]]
+
+
 output_file <- snakemake@output[["stats_file"]]
 log_file <- snakemake@log[[1]]
+ 
+
 
 ########
 # MAIN #
@@ -41,7 +55,14 @@ bbduk_stats <- bind_rows(bbduk_stats_list) %>%
   mutate(`#Kept` = `#Total`-`#Discarded`,
          `#Individual` = sub(".fq.gz", "", basename(`#File`)))
 
-write_csv(bbduk_stats, path = output_file)
+names(gc_files) <- sub(".txt", "", basename(gc_files))
+
+combined_gc_means <- lapply(gc_files, FUN = get_mean_gc) %>% 
+  bind_rows(.id = "#Individual")
+
+merged_stats <- left_join(bbduk_stats, combined_gc_means)
+
+write_csv(merged_stats, path = output_file)
   
 # write log
 sessionInfo()

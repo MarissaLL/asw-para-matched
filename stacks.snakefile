@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import numpy
 import os
 import pandas
 import re
@@ -9,16 +10,19 @@ import re
 #############
 
 
-def get_ustacks_individuals(counts_file): 
+def get_ustacks_individuals(counts_file):
 	counts_data = pandas.read_csv(counts_file)
 	indivs = sorted(set(counts_data.loc[counts_data['#Kept'] >1e6]['#Individual']))
-	return(indivs)
+	passed_read_filter = counts_data.loc[counts_data['#Individual'].isin(indivs)]
+	q90 = numpy.percentile(passed_read_filter['mean_gc'], 90)
+	passed_all_filters = sorted(set(passed_read_filter.loc[passed_read_filter['mean_gc'] < q90]['#Individual']))
+	return(passed_all_filters)
 
 ###########
 # GLOBALS #
 ###########
 
-counts_file = 'output/010_config/individual_counts.csv'
+counts_file = 'output/010_config/filtering_stats.csv'
 
 #########
 # SETUP #
@@ -36,14 +40,38 @@ subworkflow process_reads:
 
 rule target:
     input:
-        'output/010_config/combined_coverage_ustacks.csv'
+        'output/040_stacks/batch_1.catalog.alleles.tsv.gz'
+
+rule cstacks:
+	input:
+		dynamic('output/040_stacks/{individual}.alleles.tsv.gz'),
+		popmap = 'output/010_config/filtered_popmap.txt'
+	output:
+		'output/040_stacks/batch_1.catalog.tags.tsv.gz',
+        'output/040_stacks/batch_1.catalog.snps.tsv.gz',
+        'output/040_stacks/batch_1.catalog.alleles.tsv.gz'
+    params:
+    	working_dir = 'output/040_stacks'
+    threads:
+    	75
+    log:
+    	'output/logs/040_stacks/cstacks.log'
+    shell:
+    	'cstacks '
+    	'-p {threads} '
+    	'-P {params.working_dir} '
+    	'-M {input.popmap} '
+    	'-n 5 '
+    	'&> {log}'
 
 rule combine_coverage:
 	input:
 		coverage_file = expand('output/041_ustacks_coverage/{individual}.csv',
-			individual=ustacks_individuals)
+			individual=ustacks_individuals),
+		full_popmap = process_reads('output/010_config/full_popmap.txt')
 	output:
-		coverage_file = 'output/010_config/combined_coverage_ustacks.csv'
+		coverage_file = 'output/010_config/combined_coverage_ustacks.csv',
+		filtered_popmap = 'output/010_config/filtered_popmap.txt'
 	log:
 		'output/logs/041_ustacks_coverage/combine_coverage.log'
 	script:

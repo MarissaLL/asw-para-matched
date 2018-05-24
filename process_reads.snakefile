@@ -83,7 +83,7 @@ all_indivs = sorted(set(y for x in all_fcs for y in fc_to_indiv[x]))
 
 rule target:
 	input:
-		'output/010_config/individual_counts.csv',
+		'output/010_config/filtering_stats.csv',
 		'output/010_config/full_popmap.txt',
 		expand('output/022_fastqc/{individual}_fastqc.zip',
                individual=all_indivs)
@@ -127,9 +127,11 @@ rule fastqc:
 rule combine_stats:
     input:
         stats_file = expand('output/021_filtered/stats/{individual}.txt',
+            individual=all_indivs),
+        gc_file = expand('output/021_filtered/gc_hist/{individual}.txt',
             individual=all_indivs)
     output:
-        stats_file = 'output/010_config/individual_counts.csv'
+        stats_file = 'output/010_config/filtering_stats.csv'
     log:
         'output/logs/021_filtered/combined_stats.log'
     script:
@@ -164,7 +166,7 @@ rule filter_adapters:
         'ktrim=r k=23 mink=11 hdist=1 '
         'findbestmatch=t '
         'gchist={output.gc_hist} '
-        'gcbins=100 '
+        'gcbins=auto '
         'threads={threads} '
         'minlength=91 '
         '2> {log}'
