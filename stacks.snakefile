@@ -23,6 +23,7 @@ def get_ustacks_individuals(counts_file):
 ###########
 
 counts_file = 'output/010_config/filtering_stats.csv'
+stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
 
 #########
 # SETUP #
@@ -40,29 +41,124 @@ subworkflow process_reads:
 
 rule target:
     input:
-        'output/040_stacks/batch_1.catalog.alleles.tsv.gz'
+        'output/050_stacks_pops/r0/populations.sumstats_summary.tsv'
+
+
+rule populations:
+    input:
+        'output/040_stacks/catalog.fa.gz',
+        'output/040_stacks/catalog.calls',
+        popmap = 'output/010_config/filtered_popmap.txt'
+    output:
+        'output/050_stacks_pops/r0/populations.sumstats_summary.tsv'
+    params:
+        stacks_dir = 'output/040_stacks',
+        outdir = 'output/050_stacks_pops/r0'
+    singularity:
+        stacks_container
+    threads:
+        50
+    log:
+        'output/logs/050_stacks_pops/pops.log'
+    shell:
+        'populations '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-O {params.outdir} '
+        '-t {threads} '
+        '--genepop --vcf '
+        '&> {log}'
+
+rule gstacks:
+    input:
+        expand('output/040_stacks/{individual}.matches.bam',
+                individual=ustacks_individuals),
+        popmap = 'output/010_config/filtered_popmap.txt'
+    output:
+        'output/040_stacks/catalog.fa.gz',
+        'output/040_stacks/catalog.calls'
+    params:
+        stacks_dir = 'output/040_stacks'
+    singularity:
+        stacks_container
+    threads:
+        75
+    log:
+        'output/logs/040_stacks/gstacks.log'
+    shell:
+        'gstacks '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-t {threads} '
+        '&> {log}'
+
+rule tsv2bam:
+    input:
+        expand('output/040_stacks/{individual}.matches.tsv.gz',
+                individual=ustacks_individuals),
+        popmap = 'output/010_config/filtered_popmap.txt'
+    output:
+        expand('output/040_stacks/{individual}.matches.bam',
+                individual=ustacks_individuals)
+    params:
+        stacks_dir = 'output/040_stacks'
+    singularity:
+        stacks_container
+    threads:
+        75
+    log:
+        'output/logs/040_stacks/tsv2bam.log'
+    shell:
+        'tsv2bam '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-t {threads} '
+        '&> {log}'
+
+rule sstacks:
+    input:
+        catalog = 'output/040_stacks/catalog.tags.tsv.gz',
+        popmap = 'output/010_config/filtered_popmap.txt'
+    output:
+        expand('output/040_stacks/{individual}.matches.tsv.gz',
+                individual=ustacks_individuals)
+    singularity:
+        stacks_container
+    threads:
+        75
+    params:
+        stacks_dir = 'output/040_stacks'
+    log:
+        'output/logs/040_stacks/sstacks.log'
+    shell:
+        'sstacks '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-p {threads} '
+        '&> {log}'
 
 rule cstacks:
-	input:
-		dynamic('output/040_stacks/{individual}.alleles.tsv.gz'),
-		popmap = 'output/010_config/filtered_popmap.txt'
-	output:
-		'output/040_stacks/batch_1.catalog.tags.tsv.gz',
-        'output/040_stacks/batch_1.catalog.snps.tsv.gz',
-        'output/040_stacks/batch_1.catalog.alleles.tsv.gz'
-    params:
-    	working_dir = 'output/040_stacks'
+    input:
+        expand('output/040_stacks/{individual}.alleles.tsv.gz',
+               individual=ustacks_individuals),
+        popmap = 'output/010_config/filtered_popmap.txt'
+    output:
+        'output/040_stacks/catalog.tags.tsv.gz',
+        'output/040_stacks/catalog.snps.tsv.gz',
+        'output/040_stacks/catalog.alleles.tsv.gz'
     threads:
-    	75
+        75
+    params:
+        stacks_dir = 'output/040_stacks'
     log:
-    	'output/logs/040_stacks/cstacks.log'
+        'output/logs/040_stacks/cstacks.log'
     shell:
-    	'cstacks '
-    	'-p {threads} '
-    	'-P {params.working_dir} '
-    	'-M {input.popmap} '
-    	'-n 5 '
-    	'&> {log}'
+        'cstacks '
+        '-p {threads} '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-n 5 '
+        '&> {log}'
 
 rule combine_coverage:
 	input:
@@ -91,16 +187,16 @@ rule ustacks:
     input:
         fq = process_reads('output/021_filtered/{individual}.fq.gz'),
         pickle = 'output/010_config/individual_i.p'
-    params:
-        wd = 'output/040_stacks',
-        m = '3',
-        M = '4'
     output:
         'output/040_stacks/{individual}.alleles.tsv.gz',
         'output/040_stacks/{individual}.snps.tsv.gz',
         'output/040_stacks/{individual}.tags.tsv.gz'
     threads:
         1
+    params:
+        wd = 'output/040_stacks',
+        m = '3',
+        M = '4'
     log:
         'output/logs/040_stacks/{individual}_ustacks.log'
     benchmark:
