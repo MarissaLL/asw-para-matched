@@ -143,33 +143,46 @@ rule filter_adapters:
     output:
         kept_FQ = 'output/021_filtered/{individual}.fq.gz',
         discarded_FQ = 'output/021_filtered/discarded_FQ/{individual}.fq.gz',
-        stats = 'output/021_filtered/stats/{individual}.txt',
+        adapter_stats = 'output/021_filtered/adapter_stats/{individual}.txt',
+        truncation_stats = 'output/021_filtered/truncation_stats/{individual}.txt',
         gc_hist = 'output/021_filtered/gc_hist/{individual}.txt'
     params:
         adapters = 'data/bbduk_adapters.fa'
     threads:
-        10
+        1
     log:
-        'output/logs/021_filtered/{individual}.log'
+        adapter_log = 'output/logs/021_filtered/{individual}_adapters.log',
+        truncation_log = 'output/logs/021_filtered/{individual}_truncation.log'
+
     benchmark: 
         'output/benchmarks/021_filtered/{individual}.txt'
     shell:
         'bbduk.sh '
+        'threads={threads} '
         'in={input.FQ} '
-        'outnonmatch={output.kept_FQ} '
-        'outmatch={output.discarded_FQ} '
-        'ref={params.adapters} '
         'interleaved=f '
-        'stats={output.stats} '
-        'overwrite=t '
-        'ziplevel=9 '
+        'out=stdout.fq '
+        'stats={output.adapter_stats} '
+        'ref={params.adapters} '
         'ktrim=r k=23 mink=11 hdist=1 '
         'findbestmatch=t '
+        '2> {log.adapter_log} '
+        ' | '
+        'bbduk.sh '
+        'threads={threads} '
+        'in=stdin.fq '
+        'interleaved=f '
+        'outnonmatch={output.kept_FQ} '
+        'outmatch={output.discarded_FQ} '
+        'stats={output.truncation_stats} '
         'gchist={output.gc_hist} '
         'gcbins=auto '
-        'threads={threads} '
-        'minlength=91 '
-        '2> {log}'
+        'overwrite=t '
+        'forcetrimright=79 '
+        'minlength=80 '
+        'ziplevel=9 '
+        '2> {log.truncation_log}'
+        
 
 for fc in all_fcs:
     rule:
@@ -195,6 +208,7 @@ for fc in all_fcs:
             '-t 91 '
             '--inline_null '
             '--renz_1 apeKI --renz_2 mspI '
+            '--barcode_dist_1 0 '
             '&> {log} '
 
 # 010 generate stacks config
