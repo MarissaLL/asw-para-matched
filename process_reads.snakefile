@@ -126,7 +126,7 @@ rule fastqc:
 
 rule combine_stats:
     input:
-        stats_file = expand('output/021_filtered/stats/{individual}.txt',
+        stats_file = expand('output/021_filtered/adapter_stats/{individual}.txt',
             individual=all_indivs),
         gc_file = expand('output/021_filtered/gc_hist/{individual}.txt',
             individual=all_indivs)
