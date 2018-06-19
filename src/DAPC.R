@@ -11,7 +11,7 @@ library(tidyverse)
 # Globals #
 ###########
 
-plink_file <- 'output_20180614/060_pop_genet/plink.raw'
+plink_file <- 'output/060_pop_genet/plink.raw'
 para_file <-  'sample_catalog.csv'
 
 
@@ -21,6 +21,7 @@ para_file <-  'sample_catalog.csv'
 
 # Import the data 
 SNP_data <- read.PLINK(plink_file)
+
 
 ##### NAs #####
 
@@ -41,7 +42,7 @@ sum(is.na(tab(no_NA, NA.method = "asis")))
 length(tab(no_NA))
 
 
-##### Adding parasitism info #####
+##### Add parasitism info to the genlight #####
 
 # Read in and format the population and parasitism data for all (unfiltered) individuals 
 para <- read.csv(para_file) %>% 
@@ -66,20 +67,17 @@ names(indiv_to_pop) <- filtered_para$Individual
 pop(no_NA) <- indiv_to_pop[no_NA$ind.names]
 
 
+##### PCA #####
+
 # Do PCA on the no_NA data
 pca2 <- glPca(no_NA, nf = 50)
-scatter(pca2)
-
 
 # Format the PCA information to plot with ggplot
 PCA_scores <- as.data.frame(pca2$scores)
 PCA_scores ["Individual"] <- rownames(PCA_scores)
-
 PCA_pop <- as_tibble(PCA_scores) 
 PCA_plot <-  left_join(PCA_pop, filtered_para, by = "Individual")
   
-  
-
 # Generate convex hulls for each group. Make sure there are no NA values when doing this
 df <- PCA_plot
 df <- na.omit(df)
@@ -88,14 +86,30 @@ hulls <- df %>%
   group_by(pop_para_past) %>% 
   slice(chull(PC1, PC2))
 
-
-# Plot the PCs with ggplot
+# Plot PC1 and PC2 with ggplot
 ggplot(data = PCA_plot, aes(x = PC1, y = PC2, colour = Location, shape = Parasitism)) +
   geom_polygon(data = hulls, aes(fill = pop_para_past), alpha = 0.1, colour = NA) +
   geom_point() +
-  theme_classic() 
+  theme_classic()
+
+# Plot more PCs using ggplot facets, after converting data to the appropriate form
+PCA_plot_facets <- PCA_plot %>% 
+  select(-c(Pasture, Head, Body, Parasitoid, sg_box, box_comment)) %>% 
+  gather(component,score, -c(Individual, pop_para_past, Location, pop_para, Parasitism))
 
 
+######### what is y??
+ggplot(data = PCA_plot_facets, 
+       mapping = aes(x = Location,
+                     y = 
+                     colour = Parasitism)) +
+  facet_wrap(~ component) +
+  geom_point(position = position_jitter(0.2), 
+             size = 1.5) + 
+  theme_grey() +
+  theme(panel.background = element_rect(fill = "white")) +
+  labs(x = "Population", 
+       y = "Principal component")
 
 ############################ DAPC ############################### Set xval to have lower
 
