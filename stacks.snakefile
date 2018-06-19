@@ -24,7 +24,8 @@ def get_ustacks_individuals(counts_file):
 ###########
 
 counts_file = 'output/010_config/filtering_stats.csv'
-stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
+stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
+stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 
 #########
 # SETUP #
@@ -56,7 +57,7 @@ rule populations:
         stacks_dir = 'output/040_stacks',
         outdir = 'output/050_stacks_pops/r0'
     singularity:
-        'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
+        stacks2beta_container
     threads:
         50
     log:
@@ -82,7 +83,7 @@ rule gstacks:
     params:
         stacks_dir = 'output/040_stacks'
     singularity:
-        stacks_container
+        stacks2b_container
     threads:
         75
     log:
@@ -105,7 +106,7 @@ rule tsv2bam:
     params:
         stacks_dir = 'output/040_stacks'
     singularity:
-        stacks_container
+        stacks2b_container
     threads:
         75
     log:
@@ -125,7 +126,7 @@ rule sstacks:
         expand('output/040_stacks/{individual}.matches.tsv.gz',
                 individual=ustacks_individuals)
     singularity:
-        stacks_container
+        stacks2b_container
     threads:
         75
     params:
@@ -151,7 +152,7 @@ rule cstacks:
     threads:
         75
     params:
-        stacks_dir = 'output/040_stacks'
+        stacks2b_dir = 'output/040_stacks'
     log:
         'output/logs/040_stacks/cstacks.log'
     shell:
