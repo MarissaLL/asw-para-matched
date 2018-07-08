@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 
-# import os
-# import pandas
-# import pathlib
-# import pickle
-# import re
 
 ###########
 # GLOBALS #
@@ -21,7 +16,7 @@ subworkflow stacks:
 
 rule target:
     input:
-        'output/060_pop_genet/r0/populations.snps.vcf'
+        'output/060_pop_genet/populations.snps.vcf'
 
 # Run populations again on filtered data to get Fst etc. Check which flags to add
 rule populations_stats:
@@ -31,7 +26,7 @@ rule populations_stats:
         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt',
         whitelist = 'output/060_pop_genet/whitelist.txt'
     output:
-        'output/060_pop_genet/r0/populations.snps.vcf'
+        'output/060_pop_genet/populations.snps.vcf'
     params:
         stacks_dir = 'output/040_stacks',
         outdir = 'output/060_pop_genet'

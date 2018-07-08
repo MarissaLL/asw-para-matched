@@ -193,7 +193,7 @@ temp$mean
 x_2 <- no_NA_2
 mat_2 <- tab(no_NA_2, NA.method="mean")
 grp_2 <- pop(x_2)
-xval <- xvalDapc(mat_2, grp_2, n.pca.max = 300, training.set = 0.9,
+xval <- xvalDapc(mat_2, grp_2, n.pca.max = 10, training.set = 0.9,
                  result = "groupMean", center = TRUE, scale = FALSE,
                  n.pca = NULL, n.rep = 50, xval.plot = TRUE)
 xval[2:6]
@@ -228,9 +228,49 @@ contrib <- loadingplot(dapc_opt_2$var.contr, axis=1,
                        lab.jitter=1, threshold = 0.005, xlab = "",
                        ylab = "", main = NULL)
 
+############################## DAPC of para, separated by population ###############################
+
+Lincoln_only <- no_NA[str_detect(indNames(no_NA), "L")]
+
+Ruakura_only <- no_NA[str_detect(indNames(no_NA), "R")]
+
+Invermay_only <- no_NA[str_detect(indNames(no_NA), "I")]
 
 
+# Change population in the genlight to contain parasitism and location information
+indiv_to_para <- filtered_para$Parasitism
+names(indiv_to_para) <- filtered_para$Individual
+no_NA_L <- Lincoln_only
+pop(no_NA_L) <- indiv_to_para[no_NA_L$ind.names]
+
+# Check that the pop details match with the filenames (eg Karamea11p individual has pop of Karamea_parasitized)
+data.frame(i = indNames(no_NA_L), 
+           p = pop(no_NA_L))
 
 
+dapc_opt_L <- dapc(no_NA_L, n.pca = 80, n.da = 10)
 
+DAPC_scores_L <- as.data.frame(dapc_opt_L$ind.coord)
+DAPC_scores_L ["Individual"] <- rownames(DAPC_scores_L)
 
+DAPC_pop_L <- as_tibble(DAPC_scores_L) %>% 
+  left_join(filtered_para, by = "Individual") %>% 
+  select(-c(Pasture, Head, Body, Parasitoid, sg_box, box_comment))
+
+# Figure out if there is a way to make this look better
+scatter(dapc_opt_L)
+
+ggplot(data = DAPC_pop_L, 
+       mapping = aes(x = Location, 
+                     y = LD1, 
+                     colour = Parasitism)) +
+  geom_point(position = position_jitter(0.1), 
+             size = 1.5) + 
+  theme_grey() +
+  theme(panel.background = element_rect(fill = "white")) +
+  labs(x = "Population", 
+       y = "Linear discriminant score")
+
+contrib <- loadingplot(dapc_opt_L$var.contr, axis=1,
+                       lab.jitter=1, threshold = 0.005, xlab = "",
+                       ylab = "", main = NULL)
