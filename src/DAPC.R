@@ -150,7 +150,7 @@ dapc_opt_8 <- dapc(no_NA, n.pca = 80, n.da = 10)
 DAPC_scores_8 <- as.data.frame(dapc_opt_8$ind.coord)
 DAPC_scores_8 ["Individual"] <- rownames(DAPC_scores_8)
 
-DAPC_pop_8 <- as_tibble(DAPC_scores) %>% 
+DAPC_pop_8 <- as_tibble(DAPC_scores_8) %>% 
   left_join(filtered_para, by = "Individual") %>% 
   select(-c(Pasture, Head, Body, Parasitoid, sg_box, box_comment))
 

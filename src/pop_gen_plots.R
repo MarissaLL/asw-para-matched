@@ -11,6 +11,8 @@ ggplot(LR_fst, aes(x = `Overall Pi`,
                    y = `Corrected AMOVA Fst`)) +
   geom_point(position = position_jitter(0.48))
 
+
+# Between populations summary Fst
 Fst_summary <- read_delim('output/060_pop_genet/populations.fst_summary.tsv', delim = '\t', col_names = TRUE) 
 
 
@@ -30,8 +32,12 @@ Fst_plot <- Fst_table %>%
 
 pop_order <- c("I", "L", "R", "Rpoa")
 
+
 ggplot(Fst_plot, aes(x = X1, y = variable, fill = value)) +
-  geom_raster()
+  geom_raster() + 
+  theme_classic() +
+  theme(axis.line = element_blank(), axis.ticks = element_blank())+
+  labs(x = "Population", y = "Population")
 
 
 # Private alleles
@@ -85,7 +91,8 @@ IBS_plot <-  IBS$ibs
 colnames(IBS_plot) <- IBS$sample.id 
 rownames(IBS_plot) <- IBS$sample.id
 
-hc <- hclust(as.dist(1 - IBS_plot))
+
+hc <- hclust(as.dist(1 - IBS_plot), method = "complete")
 
 
 indiv_order <- hc$labels[hc$order]
@@ -97,8 +104,16 @@ IBS_plot2 <- melt(IBS_plot) %>%
   
 ggplot(IBS_plot2, aes(x = Var1, y = Var2, fill = value)) + 
   geom_raster() +
-  scale_fill_gradientn(colours = hs)
+  scale_fill_gradientn(colours = hs) +
+  theme_classic() +
+  theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+  labs(x = "Individual", y = "Individual")
 
+
+# Overall summary stats for populations
+
+var_pos_pop_sumstats <-  read_delim('output/060_pop_genet/populations.sumstats_summary.tsv', delim = '\t', skip = 1, n_max = 4)
+all_pos_pop_sumstats <- read_delim('output/060_pop_genet/populations.sumstats_summary.tsv', delim = '\t', skip = 7)
 
 
 

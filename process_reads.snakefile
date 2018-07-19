@@ -153,7 +153,6 @@ rule filter_adapters:
     log:
         adapter_log = 'output/logs/021_filtered/{individual}_adapters.log',
         truncation_log = 'output/logs/021_filtered/{individual}_truncation.log'
-
     benchmark: 
         'output/benchmarks/021_filtered/{individual}.txt'
     shell:
