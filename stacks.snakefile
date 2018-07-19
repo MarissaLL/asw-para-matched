@@ -12,18 +12,25 @@ import re
 
 
 def get_ustacks_individuals(counts_file):
-	counts_data = pandas.read_csv(counts_file)
-	indivs = sorted(set(counts_data.loc[counts_data['#Kept'] >1e6]['#Individual']))
-	passed_read_filter = counts_data.loc[counts_data['#Individual'].isin(indivs)]
-	q90 = numpy.percentile(passed_read_filter['mean_gc'], 90)
-	passed_all_filters = sorted(set(passed_read_filter.loc[passed_read_filter['mean_gc'] < q90]['#Individual']))
-	return(passed_all_filters)
+    counts_data = pandas.read_csv(counts_file)
+    indivs = sorted(set(counts_data.loc[counts_data['#Kept'] >1e6]['#Individual']))
+    passed_read_filter = counts_data.loc[counts_data['#Individual'].isin(indivs)]
+    q90 = numpy.percentile(passed_read_filter['mean_gc'], 90)
+    passed_all_filters = sorted(set(passed_read_filter.loc[passed_read_filter['mean_gc'] < q90]['#Individual']))
+    return(passed_all_filters)
+
+def lookup_indiv(pickle_file, individual):
+    with open(pickle_file, 'rb') as f:
+        individual_i = pickle.load(f)
+        sample_i = individual_i[individual]
+        return(sample_i)
 
 ###########
 # GLOBALS #
 ###########
 
 counts_file = 'output/010_config/filtering_stats.csv'
+r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
 stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 
@@ -153,38 +160,44 @@ rule cstacks:
         75
     params:
         stacks2b_dir = 'output/040_stacks'
+    singularity:
+        stacks2b_container
     log:
         'output/logs/040_stacks/cstacks.log'
     shell:
         'cstacks '
         '-p {threads} '
-        '-P {params.stacks_dir} '
+        '-P {params.stacks2b_dir} '
         '-M {input.popmap} '
         '-n 5 '
         '&> {log}'
 
 rule combine_coverage:
-	input:
-		coverage_file = expand('output/041_ustacks_coverage/{individual}.csv',
-			individual=ustacks_individuals),
-		full_popmap = process_reads('output/010_config/full_popmap.txt')
-	output:
-		coverage_file = 'output/010_config/combined_coverage_ustacks.csv',
-		filtered_popmap = 'output/010_config/filtered_popmap.txt'
-	log:
-		'output/logs/041_ustacks_coverage/combine_coverage.log'
-	script:
-		'src/combine_coverage.R'
+    input:
+        coverage_file = expand('output/041_ustacks_coverage/{individual}.csv',
+            individual=ustacks_individuals),
+        full_popmap = process_reads('output/010_config/full_popmap.txt')
+    output:
+        coverage_file = 'output/010_config/combined_coverage_ustacks.csv',
+        filtered_popmap = 'output/010_config/filtered_popmap.txt'
+    singularity:
+        r_container
+    log:
+        'output/logs/041_ustacks_coverage/combine_coverage.log'
+    script:
+        'src/combine_coverage.R'
 
 rule calculate_coverage:
-	input:
-		tags = 'output/040_stacks/{individual}.tags.tsv.gz'
-	output:
-		csv = 'output/041_ustacks_coverage/{individual}.csv'
-	log:
-		'output/logs/041_ustacks_coverage/{individual}.log'
-	script:
-		'src/calculate_coverage.R'
+    input:
+        tags = 'output/040_stacks/{individual}.tags.tsv.gz'
+    output:
+        csv = 'output/041_ustacks_coverage/{individual}.csv'
+    singularity:
+        r_container
+    log:
+        'output/logs/041_ustacks_coverage/{individual}.log'
+    script:
+        'src/calculate_coverage.R'
 
 rule ustacks:
     input:
@@ -194,30 +207,29 @@ rule ustacks:
         'output/040_stacks/{individual}.alleles.tsv.gz',
         'output/040_stacks/{individual}.snps.tsv.gz',
         'output/040_stacks/{individual}.tags.tsv.gz'
+    singularity:
+        stacks2b_container
     threads:
         1
     params:
         wd = 'output/040_stacks',
         m = '3',
-        M = '4'
+        M = '4',
+        i = lambda wildcards, input: lookup_indiv(input.pickle, wildcards.individual)
     log:
         'output/logs/040_stacks/{individual}_ustacks.log'
     benchmark:
         'output/benchmarks/040_stacks/{individual}_ustacks.log'
-    run:
-        with open(input.pickle, 'rb') as f:
-            individual_i = pickle.load(f)
-        sample_i = individual_i[wildcards.individual]
-        shell('ustacks '
-              '-p {threads} '
-              '-t gzfastq '
-              '-f {input.fq} '
-              '-o {params.wd} '
-              '-i {sample_i} '
-              '-m {params.m} '
-              '-M {params.M} '
-              '&> {log} ',
-              bench_record=bench_record)
+    shell:
+        'ustacks '
+        '-p {threads} '
+        '-t gzfastq '
+        '-f {input.fq} '
+        '-o {params.wd} '
+        '-i {params.i} '
+        '-m {params.m} '
+        '-M {params.M} '
+        '&> {log}'
 
 rule enumerate_samples:
     input:
