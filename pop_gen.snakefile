@@ -6,6 +6,7 @@
 ###########
 
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
+bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d571b5e888e98e5b79f902c30388'
 
 #########
 # RULES #
@@ -20,50 +21,61 @@ rule target:
         'output/070_diyabc/populations.snps.vcf',
         'output/070_diyabc/abc_indivs.txt'
 
-rule create_abc_indivs:
+rule bayescan:
     input:
-        popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
-    output:
-        'output/070_diyabc/abc_indivs.txt'
-    log:
-        'output/logs/070_diyabc/abc_indivs.log'
-    script:
-        'src/create_abc_indivs.R'
 
-# sort out where the popmap and whitelist are just copied across
-rule populations_diyabc:
-    input:
-        stacks('output/040_stacks/catalog.fa.gz'),
-        stacks('output/040_stacks/catalog.calls'),
-        popmap = 'output/070_diyabc/r0.8_filtered_popmap.txt',
-        whitelist = 'output/070_diyabc/whitelist.txt'
     output:
-        'output/070_diyabc/populations.snps.vcf'
-    params:
-        stacks_dir = 'output/040_stacks',
-        outdir = 'output/070_diyabc'
     singularity:
-        stacks2beta_container
-    threads:
-        50
+        bayescan_container
     log:
-        'output/logs/070_diyabc/pops_stats.log'
+        'output/logs/071_bayescan/bayescan.log'
     shell:
-        'populations '
-        '-P {params.stacks_dir} '
-        '-M {input.popmap} '
-        '-O {params.outdir} '
-        '-W {input.whitelist} '
-        '-p 4 '
-        '-t {threads} '
-        '-r 0 '
-        '--genepop '
-        '--vcf '
-        '&> {log}'
+        'bayescan '
+
+# rule create_abc_indivs:
+#     input:
+#         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+#     output:
+#         'output/070_diyabc/abc_indivs.txt'
+#     log:
+#         'output/logs/070_diyabc/abc_indivs.log'
+#     script:
+#         'src/create_abc_indivs.R'
+
+# # sort out where the popmap and whitelist are just copied across
+# rule populations_diyabc:
+#     input:
+#         stacks('output/040_stacks/catalog.fa.gz'),
+#         stacks('output/040_stacks/catalog.calls'),
+#         popmap = 'output/070_diyabc/r0.8_filtered_popmap.txt',
+#         whitelist = 'output/070_diyabc/whitelist.txt'
+#     output:
+#         'output/070_diyabc/populations.snps.vcf'
+#     params:
+#         stacks_dir = 'output/040_stacks',
+#         outdir = 'output/070_diyabc'
+#     singularity:
+#         stacks2beta_container
+#     threads:
+#         50
+#     log:
+#         'output/logs/070_diyabc/pops_stats.log'
+#     shell:
+#         'populations '
+#         '-P {params.stacks_dir} '
+#         '-M {input.popmap} '
+#         '-O {params.outdir} '
+#         '-W {input.whitelist} '
+#         '-p 4 '
+#         '-t {threads} '
+#         '-r 0 '
+#         '--genepop '
+#         '--vcf '
+#         '&> {log}'
 
     
 
-# Run populations again on filtered data to get Fst etc. Check which flags to add
+# Run populations again on filtered data to get Fst etc.
 rule populations_stats:
     input:
         stacks('output/040_stacks/catalog.fa.gz'),
