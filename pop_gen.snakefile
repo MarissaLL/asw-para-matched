@@ -17,21 +17,23 @@ subworkflow stacks:
 
 rule target:
     input:
-        'output/070_pop_tests/geste2'
+        'output/060_pop_genet/populations.snps.vcf',
+        'output/070_pop_tests/compare_para.geste',
+        'output/070_pop_tests/compared_para_prop.txt'
 
 
-rule bayescan:
+rule bayescan_para:
     input:
-        genotypes = 'output/070_pop_tests/geste'
+        genotypes = 'output/070_pop_tests/compare_para.geste'
     output:
-        'output/070_pop_tests/geste2'
+        'output/070_pop_tests/compared_para_prop.txt'
     params:
         outdir = 'output/070_pop_tests',
-        outname = 'geste2'
+        outname = 'compared_para'
     singularity:
         bayescan_container
     log:
-        'output/logs/070_pop_tests/loggy.log'
+        'output/logs/070_pop_tests/bayescan_para.log'
     shell:
         'bayescan_2.1 '
         '{input.genotypes} '
@@ -42,31 +44,60 @@ rule bayescan:
         '-out_freq '
         '&> {log}'
 
+# rule make_bayescan_input_para:
+#     input:
+#         ped = 'output/070_pop_tests/pop_para_snps.ped',
+#         spid = 'data/convert_para.spid'
+#     output:
+#         'output/070_pop_tests/compare_para.geste'
+#     params:
+#         in_format = 'PED'
+#         out_format = 'GESTE_BAYE_SCAN'
+#     singularity:
+#         pgdspider_container
+#     log:
+#         'output/logs/070_pop_tests/pgdspider_2pops.log'
+#     shell:
+#         'somehow run PGDSpider2-cli.jar' # FIX THIS
+#         '-inputfile {input.ped} '
+#         '-inputformat {params.in_format} '
+#         '-outputfile {output}'
+#         '-outputformat {params.out_format} '
+#         '-spid {input.spid} '
+#         '&> {log}'
 
-rule make_bayescan_input_pop:
-    input:
-        'output/070_pop_tests/pop_para_snps.ped'
-    output:
-        'output/070_pop_tests/compare_pops.geste'
-    params:
+# rule make_bayescan_input_pop:
+#     input:
+#         ped = 'output/070_pop_tests/pop_para_snps.ped',
+#         spid = 'data/convert_pops.spid'
+#     output:
+#         'output/070_pop_tests/compare_pops.geste'
+#     params:
+#         in_format = 'PED'
+#         out_format = 'GESTE_BAYE_SCAN'
+#     singularity:
+#         pgdspider_container
+#     log:
+#         'output/logs/070_pop_tests/pgdspider_4pops.log'
+#     shell:
+#         'somehow run PGDSpider2-cli.jar' # FIX THIS
+#         '-inputfile {input.ped} '
+#         '-inputformat {params.in_format} '
+#         '-outputfile {output}'
+#         '-outputformat {params.out_format} '
+#         '-spid {input.spid} '
+#         '&> {log}'
 
-    singularity:
-        pgdspider_container
-    log:
-        'output/logs/070_pop_tests/pgdspider_4pops.log'
-    shell:
-
-
-rule add_popdata_to_ped:
-    input:
-        ped_file = 'output/060_pop_genet/snps.ped',
-        para_info = process_reads('output/010_config/tidy_sample_info.tsv')
-    output:
-        'output/070_pop_tests/pop_para_snps.ped'
-    log:
-        'output/logs/070_pop_tests/add_popdata_to_ped.log'
-    script:
-        'src/add_popdata_to_ped.R'
+# rule add_popdata_to_ped:
+#     input:
+#         ped_file = 'output/060_pop_genet/populations.plink.ped'
+#         para_info = process_reads('output/010_config/tidy_sample_info.tsv')
+#     output:
+#         'output/070_pop_tests/pop_para_snps.ped'
+#     log:
+#         'output/logs/070_pop_tests/add_popdata_to_ped.log'
+#     script:
+#         'src/add_popdata_to_ped.R'
 
 # Run populations again on filtered data to get Fst etc.
 rule populations_stats:
@@ -76,7 +107,8 @@ rule populations_stats:
         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt',
         whitelist = 'output/060_pop_genet/whitelist.txt'
     output:
-        'output/060_pop_genet/populations.snps.vcf'
+        'output/060_pop_genet/populations.snps.vcf',
+        'output/060_pop_genet/populations.plink.ped'
     params:
         stacks_dir = 'output/040_stacks',
         outdir = 'output/060_pop_genet'
@@ -95,6 +127,7 @@ rule populations_stats:
         '-t {threads} '
         '-r 0 '
         '--genepop '
+        '--plink '
         '--vcf '
         '--hwe '
         '--fstats '
