@@ -15,10 +15,10 @@ sample_missing_quantile <- snakemake@params[["sample_missing_quantile"]]
 log_file <- snakemake@log[[1]]
 
 #dev
-gds_file <- 'output/060_pop_genet/snps.gds'
-maf <- 0.05
-missing_rate <- 0.2
-sample_missing_quantile <- 0.8
+# gds_file <- 'output/060_pop_genet/snps.gds'
+# maf <- 0.05
+# missing_rate <- 0.2
+# sample_missing_quantile <- 0.8
 
 
 ########

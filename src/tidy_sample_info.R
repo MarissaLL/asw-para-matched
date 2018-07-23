@@ -12,8 +12,6 @@ output_file <- snakemake@output[[1]]
 log_file <- snakemake@log[[1]]
 
 
-# dev
-para_file <-  'sample_catalog.csv'
 
 ########
 # MAIN #

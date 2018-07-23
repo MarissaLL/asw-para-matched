@@ -6,10 +6,11 @@ library(stringr)
 
 # Fst
 LR_fst <- read_delim('output/060_pop_genet/populations.fst_R-L.tsv', delim = '\t')
+LR_phi <- read_delim('output/060_pop_genet/populations')
 
 ggplot(LR_fst, aes(x = `Overall Pi`,
                    y = `Corrected AMOVA Fst`)) +
-  geom_point(position = position_jitter(0.48))
+  geom_point()
 
 
 # Between populations summary Fst
@@ -116,6 +117,10 @@ var_pos_pop_sumstats <-  read_delim('output/060_pop_genet/populations.sumstats_s
 all_pos_pop_sumstats <- read_delim('output/060_pop_genet/populations.sumstats_summary.tsv', delim = '\t', skip = 7)
 
 
+# format nicely for latex 
+var_pos_pop_sumstats %>% 
+  select(`# Pop ID`, Private, P, Obs_Het, Exp_Het, Pi, Fis ) %>% 
+  xtable(digits = 5)
 
 
 
