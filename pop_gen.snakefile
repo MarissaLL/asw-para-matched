@@ -17,63 +17,56 @@ subworkflow stacks:
 
 rule target:
     input:
-        'output/060_pop_genet/populations.snps.vcf',
-        'output/070_diyabc/populations.snps.vcf',
-        'output/070_diyabc/abc_indivs.txt'
+        'output/070_pop_tests/geste2'
+
 
 rule bayescan:
     input:
-
+        genotypes = 'output/070_pop_tests/geste'
     output:
+        'output/070_pop_tests/geste2'
+    params:
+        outdir = 'output/070_pop_tests',
+        outname = 'geste2'
     singularity:
         bayescan_container
     log:
-        'output/logs/071_bayescan/bayescan.log'
+        'output/logs/070_pop_tests/loggy.log'
     shell:
-        'bayescan '
+        'bayescan_2.1 '
+        '{input.genotypes} '
+        '-od {params.outdir} '
+        '-o {params.outname} '
+        '-pr_odds 1000 '
+        '-out_pilot '
+        '-out_freq '
+        '&> {log}'
 
-# rule create_abc_indivs:
-#     input:
-#         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
-#     output:
-#         'output/070_diyabc/abc_indivs.txt'
-#     log:
-#         'output/logs/070_diyabc/abc_indivs.log'
-#     script:
-#         'src/create_abc_indivs.R'
 
-# # sort out where the popmap and whitelist are just copied across
-# rule populations_diyabc:
-#     input:
-#         stacks('output/040_stacks/catalog.fa.gz'),
-#         stacks('output/040_stacks/catalog.calls'),
-#         popmap = 'output/070_diyabc/r0.8_filtered_popmap.txt',
-#         whitelist = 'output/070_diyabc/whitelist.txt'
-#     output:
-#         'output/070_diyabc/populations.snps.vcf'
-#     params:
-#         stacks_dir = 'output/040_stacks',
-#         outdir = 'output/070_diyabc'
-#     singularity:
-#         stacks2beta_container
-#     threads:
-#         50
-#     log:
-#         'output/logs/070_diyabc/pops_stats.log'
-#     shell:
-#         'populations '
-#         '-P {params.stacks_dir} '
-#         '-M {input.popmap} '
-#         '-O {params.outdir} '
-#         '-W {input.whitelist} '
-#         '-p 4 '
-#         '-t {threads} '
-#         '-r 0 '
-#         '--genepop '
-#         '--vcf '
-#         '&> {log}'
+rule make_bayescan_input_pop:
+    input:
+        'output/070_pop_tests/pop_para_snps.ped'
+    output:
+        'output/070_pop_tests/compare_pops.geste'
+    params:
 
-    
+    singularity:
+        pgdspider_container
+    log:
+        'output/logs/070_pop_tests/pgdspider_4pops.log'
+    shell:
+
+
+rule add_popdata_to_ped:
+    input:
+        ped_file = 'output/060_pop_genet/snps.ped',
+        para_info = process_reads('output/010_config/tidy_sample_info.tsv')
+    output:
+        'output/070_pop_tests/pop_para_snps.ped'
+    log:
+        'output/logs/070_pop_tests/add_popdata_to_ped.log'
+    script:
+        'src/add_popdata_to_ped.R'
 
 # Run populations again on filtered data to get Fst etc.
 rule populations_stats:
