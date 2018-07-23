@@ -85,6 +85,7 @@ rule target:
 	input:
 		'output/010_config/filtering_stats.csv',
 		'output/010_config/full_popmap.txt',
+        'output/010_config/tidy_sample_info.tsv',
 		expand('output/022_fastqc/{individual}_fastqc.zip',
                individual=all_indivs)
 
@@ -223,3 +224,14 @@ rule generate_config_files:
         outdir = 'output/010_config'
     run:
         read_keydata_and_write_config(input.key_file, params.outdir)
+
+
+rule tidy_sample_info:
+    input:
+        'data/sample_catalog.csv'
+    output:
+        'output/010_config/tidy_sample_info.tsv'
+    log:
+        'output/logs/010_config/tidy_sample_info.log'
+    script:
+        'src/tidy_sample_info.R'
