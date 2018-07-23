@@ -274,3 +274,14 @@ ggplot(data = DAPC_pop_L,
 contrib <- loadingplot(dapc_opt_L$var.contr, axis=1,
                        lab.jitter=1, threshold = 0.005, xlab = "",
                        ylab = "", main = NULL)
+
+
+########################################## Finding K #######################################
+
+x <- no_NA_8
+grp <- find.clusters(x, max.n.clust=20,n.pca = 5)
+
+table(pop(x), grp$grp)
+
+table.value(table(pop(x), grp$grp), col.lab=paste("inf", 1:6),
+            row.lab=paste("ori", 1:6))
