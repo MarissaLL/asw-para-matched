@@ -12,14 +12,20 @@ sampling_loc <-  data.frame(
   names = c('Ruakura', 'Lincoln', 'Invermay'),
   stringsAsFactors = FALSE)  
 
+# Manually specify label position to make it better
+lab_pos <- c(1.4, -0.5, -0.3)
+
 # Plot the map
 # axis lines on top and right currently not working
 ggplot() + 
   geom_polygon(data = nz_map, aes(x=long, y = lat, group = group), fill = NA, colour = 'black' ) + 
   coord_fixed(1.45) + 
   geom_point(data = sampling_loc, aes(x = long, y = lat), colour = 'red', size = 3.5) +
+  geom_text(data = sampling_loc, aes(x = long, y = lat, label = names), hjust= lab_pos) +
   theme_classic() + 
   theme(axis.line.x.top = element_line(), axis.line.y.right = element_line()) +
   labs(x = 'Longitude', y = 'Latitude')
 
 
+  lab_pos <- c(1.4, -0.5, -0.3)
+  
