@@ -26,6 +26,4 @@ ggplot() +
   theme(axis.line.x.top = element_line(), axis.line.y.right = element_line()) +
   labs(x = 'Longitude', y = 'Latitude')
 
-
-  lab_pos <- c(1.4, -0.5, -0.3)
   

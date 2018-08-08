@@ -12,7 +12,7 @@ para_data <- snakemake@input[["para_info"]]
 output_ped <- snakemake@output[[1]]
 log_file <- snakemake@log[[1]]
 
- 
+
 ########
 # MAIN #
 ########

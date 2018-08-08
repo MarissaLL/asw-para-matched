@@ -30,3 +30,5 @@ sink(log, append = TRUE, type = "output")
 
 
 snpgdsVCF2GDS(VCFfile, GDSfile, method = "biallelic.only" )
+
+sessionInfo()

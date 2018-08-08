@@ -10,8 +10,9 @@ LR_phi <- read_delim('output/060_pop_genet/populations')
 
 ggplot(LR_fst, aes(x = `Overall Pi`,
                    y = `Corrected AMOVA Fst`)) +
-  geom_point()
+  geom_point() +
 
+sig <- filter(LR_fst, LR_fst$`Corrected AMOVA Fst`<0.005)
 
 # Between populations summary Fst
 Fst_summary <- read_delim('output/060_pop_genet/populations.fst_summary.tsv', delim = '\t', col_names = TRUE) 
@@ -39,6 +40,11 @@ ggplot(Fst_plot, aes(x = X1, y = variable, fill = value)) +
   theme_classic() +
   theme(axis.line = element_blank(), axis.ticks = element_blank())+
   labs(x = "Population", y = "Population")
+
+
+
+
+
 
 
 # Private alleles
