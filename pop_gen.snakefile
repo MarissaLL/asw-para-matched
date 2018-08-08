@@ -8,6 +8,7 @@
 bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d571b5e888e98e5b79f902c30388'
 fastsimcoal_container = 'shub://MarissaLL/singularity-containers:fastsimcoal_2.6@37ca431784b209574f517ee09263fca2'
 pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5@e546f843e2b84401284745a766546c90'
+r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 
 
@@ -25,37 +26,79 @@ rule target:
     input:
         'output/060_pop_genet/populations.snps.vcf',
         'output/070_pop_tests/compared_pops_prop.txt',
-        'output/070_pop_tests/compared_para_prop.txt'
+        'output/070_pop_tests/compared_para_prop.txt',
+        'output/080_pop_simulations/fsc_sfs.txt',
+        'fsc_test/test.arp'
 
 
 
 
 
+# rule subset_snps:
+#     input:
+#         stacks('output/040_stacks/catalog.fa.gz'),
+#         stacks('output/040_stacks/catalog.calls'),
+#         popmap = 'output/080_test/shortened_popmap.txt',
+#         whitelist = 'output/080_test/whitelist.txt'
+#     output:
+#         'output/080_test/populations.snps.genepop'
+#     params:
+#         stacks_dir = 'output/040_stacks',
+#         outdir = 'output/080_test'
+#     singularity:
+#         stacks2beta_container
+#     threads:
+#         50
+#     log:
+#         'output/logs/080_test/pops_stats.log'
+#     shell:
+#         'populations '
+#         '-P {params.stacks_dir} '
+#         '-M {input.popmap} '
+#         '-O {params.outdir} '
+#         '-W {input.whitelist} '
+#         '-t {threads} '
+#         '-r 0 '
+#         '--genepop '
+#         '--write_random_snp '
+#         '&> {log}'  
 
-
-
-# Make a new SPID. CHANGE THIS TO GENEPOP?
-rule make_arlequin_input:
-     input:
-        vcf = 'output/060_pop_genet/populations.snps.vcf',
-        spid = 'data/convert_arlequin.spid'
+rule simulate_sfs:
+    input:
+        par = 'fsc_test/test.par',
+        obs = 'fsc_test/test_MAFpop0.obs'
     output:
-        'output/071_fastsimcoal/.arp'
-    params:
-        in_format = 'VCF',
-        out_format = 'ARLEQUIN'
+        'fsc_test/test.arp'
     singularity:
-        pgdspider_container
-    log:
-        'output/logs/071_fastsimcoal/pgdspider.log'
+        fastsimcoal_container
     shell:
-        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.ped} '
-        '-inputformat {params.in_format} '
-        '-outputfile {output}'
-        '-outputformat {params.out_format} '
-        '-spid {input.spid} '
-        '&> {log}'
+        'fsc26 '
+        '--ifile {input.par} '
+        '--noarloutput '
+        '--dnatosnp 0 '
+        '--msfs '
+        '--numsims 1000 '
+        '--seed 1234 '
+
+
+rule calculate_obs_sfs:
+    input:
+        vcf = 'output/060_pop_genet/populations.snps.vcf',
+        popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+    output:
+        sfs_popmap = 'output/080_pop_simulations/sfs_popmap.txt',
+        dadi = 'output/080_pop_simulations/dadi.txt',
+        fsc = 'output/080_pop_simulations/fsc_sfs.txt'
+    params:
+        vcf2sfs = 'vcf2sfs.R'
+    singularity:
+        r_container
+    threads:
+        20
+    log:
+        'output/logs/080_pop_simulations/sfs_calcs.log'
+    script:
+        'src/sfs_calcs.R'
 
 
 rule bayescan_pops:
@@ -236,7 +279,7 @@ rule convert_to_plinkraw:
         '--recode A '
         '--aec'
 
-# Filter SNPs on MAF and missing rate, also filter by sample missing rate
+# Filter SNPs on MAF and missing rate, also filter samples by missing rate
 rule filter_snps_indivs:
     input:
         'output/060_pop_genet/snps.gds'
