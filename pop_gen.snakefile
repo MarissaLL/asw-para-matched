@@ -11,6 +11,7 @@ pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5
 r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 
+bayescan_runs = ['compared_4pops', 'compared_para', 'compared_2pops']
 
 #########
 # RULES #
@@ -25,10 +26,10 @@ subworkflow stacks:
 rule target:
     input:
         'output/060_pop_genet/populations.snps.vcf',
-        'output/070_pop_tests/compared_pops_prop.txt',
-        'output/070_pop_tests/compared_para_prop.txt',
-        'output/080_pop_simulations/fsc_sfs.txt',
-        'fsc_test/test.arp'
+        expand('output/070_bayescan/{run}.sel',
+               run = bayescan_runs)
+        #'output/080_pop_simulations/fsc_sfs.txt',
+        #'fsc_test/test.arp'
 
 
 
@@ -63,154 +64,179 @@ rule target:
 #         '--write_random_snp '
 #         '&> {log}'  
 
-rule simulate_sfs:
-    input:
-        par = 'fsc_test/test.par',
-        obs = 'fsc_test/test_MAFpop0.obs'
-    output:
-        'fsc_test/test.arp'
-    singularity:
-        fastsimcoal_container
-    shell:
-        'fsc26 '
-        '--ifile {input.par} '
-        '--noarloutput '
-        '--dnatosnp 0 '
-        '--msfs '
-        '--numsims 1000 '
-        '--seed 1234 '
+# rule simulate_sfs:
+#     input:
+#         par = 'fsc_test/test.par',
+#         obs = 'fsc_test/test_MAFpop0.obs'
+#     output:
+#         'fsc_test/test.arp'
+#     singularity:
+#         fastsimcoal_container
+#     shell:
+#         'fsc26 '
+#         '--ifile {input.par} '
+#         '--noarloutput '
+#         '--dnatosnp 0 '
+#         '--msfs '
+#         '--numsims 1000 '
+#         '--seed 1234 '
 
 
-rule calculate_obs_sfs:
+# rule calculate_obs_sfs:
+#     input:
+#         vcf = 'output/060_pop_genet/populations.snps.vcf',
+#         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+#     output:
+#         sfs_popmap = 'output/080_pop_simulations/sfs_popmap.txt',
+#         dadi = 'output/080_pop_simulations/dadi.txt',
+#         fsc = 'output/080_pop_simulations/fsc_sfs.txt'
+#     params:
+#         vcf2sfs = 'vcf2sfs.R'
+#     singularity:
+#         r_container
+#     threads:
+#         20
+#     log:
+#         'output/logs/080_pop_simulations/sfs_calcs.log'
+#     script:
+#         'src/sfs_calcs.R'
+
+
+
+
+
+
+
+rule bayescan:
     input:
-        vcf = 'output/060_pop_genet/populations.snps.vcf',
-        popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+        genotypes = expand('output/070_bayescan/{run}.geste-outputformat',
+                            run = bayescan_runs)
     output:
-        sfs_popmap = 'output/080_pop_simulations/sfs_popmap.txt',
-        dadi = 'output/080_pop_simulations/dadi.txt',
-        fsc = 'output/080_pop_simulations/fsc_sfs.txt'
+        expand('output/070_bayescan/{run}.sel',
+               run = bayescan_runs),
+        expand('output/070_bayescan/{run}_fst.txt',
+               run = bayescan_runs)
     params:
-        vcf2sfs = 'vcf2sfs.R'
-    singularity:
-        r_container
-    threads:
-        20
-    log:
-        'output/logs/080_pop_simulations/sfs_calcs.log'
-    script:
-        'src/sfs_calcs.R'
-
-
-rule bayescan_pops:
-    input:
-        genotypes = 'output/070_pop_tests/compare_pops.geste-outputformat'
-    output:
-        'output/070_pop_tests/compared_pops_prop.txt'
-    params:
-        outdir = 'output/070_pop_tests',
-        outname = 'compared_pops'
+        outdir = 'output/070_bayescan',
+        outname = expand('{run}', 
+                         run = bayescan_runs)
     singularity:
         bayescan_container
     threads:
         50
     log:
-        'output/logs/070_pop_tests/bayescan_pops.log'
+        expand('output/logs/070_bayescan/{run}.log',
+               run = bayescan_runs)
     shell:
         'bayescan_2.1 '
         '{input.genotypes} '
         '-od {params.outdir} '
         '-o {params.outname} '
         '-pilot 5000 '
-        '-burn 5000 '
-        '-n 10000 '
-        '-pr_jump 0.1 '
-        '-pr_pref 0.5 '
+        '-nbp 20 '
+        '-burn 15000 '
+        '-n 30000 '
+        '-thin 10 '
         '-pr_odds 500 '
         '-out_pilot '
         '-out_freq '
         '&> {log}'
 
-rule bayescan_para:
-    input:
-        genotypes = 'output/070_pop_tests/compare_para.geste-outputformat'
+rule make_bayescan_input_2pops:
+    input: 
+        vcf = 'output/060_pop_genet/populations.snps.vcf',
+        spid = 'data/convert_2pops.spid',
+        popmap = 'output/070_bayescan/popmap_2pops.txt'
     output:
-        'output/070_pop_tests/compared_para_prop.txt'
+        'output/070_bayescan/compared_2pops.geste-outputformat'
     params:
-        outdir = 'output/070_pop_tests',
-        outname = 'compared_para'
+        in_format = 'VCF',
+        out_format = 'GESTE_BAYE_SCAN',
+        out_path = 'output/070_bayescan/compared_2pops.geste'
     singularity:
-        bayescan_container
+        pgdspider_container
+    threads:
+        50
     log:
-        'output/logs/070_pop_tests/bayescan_para.log'
+        'output/logs/070_bayescan/pgdspider_para.log'
     shell:
-        'bayescan_2.1 '
-        '{input.genotypes} '
-        '-od {params.outdir} '
-        '-o {params.outname} '
-        '-pilot 15000 '
-        '-burn 15000 '
-        '-n 30000 '
-        '-pr_jump 0.1 '
-        '-pr_pref 0.5 '
-        '-pr_odds 500 '
-        '-out_pilot '
-        '-out_freq '
+        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
+        '-inputfile {input.vcf} '
+        '-inputformat {params.in_format} '
+        '-outputfile {params.out_path}'
+        '-outputformat {params.out_format} '
+        '-spid {input.spid} '
         '&> {log}'
 
 rule make_bayescan_input_para:
-    input:
-        ped = 'output/070_pop_tests/pop_para_snps.ped',
-        spid = 'data/convert_para.spid'
+    input: 
+        vcf = 'output/060_pop_genet/populations.snps.vcf',
+        spid = 'data/convert_para.spid',
+        popmap = 'output/070_bayescan/popmap_para.txt'
     output:
-        'output/070_pop_tests/compare_para.geste-outputformat'
+        'output/070_bayescan/compared_para.geste-outputformat'
     params:
-        in_format = 'PED',
-        out_format = 'GESTE_BAYE_SCAN'
+        in_format = 'VCF',
+        out_format = 'GESTE_BAYE_SCAN',
+        out_path = 'output/070_bayescan/compared_para.geste'
     singularity:
         pgdspider_container
+    threads:
+        50
     log:
-        'output/logs/070_pop_tests/pgdspider_2pops.log'
+        'output/logs/070_bayescan/pgdspider_para.log'
     shell:
         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.ped} '
+        '-inputfile {input.vcf} '
         '-inputformat {params.in_format} '
-        '-outputfile {output}'
+        '-outputfile {params.out_path}'
         '-outputformat {params.out_format} '
         '-spid {input.spid} '
         '&> {log}'
 
-rule make_bayescan_input_pops:
-    input:
-        ped = 'output/070_pop_tests/pop_para_snps.ped',
-        spid = 'data/convert_pops.spid'
+rule make_bayescan_popmaps:
+    input: 
+        popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt',
+        para_data = process_reads('output/010_config/tidy_sample_info.tsv')
     output:
-        'output/070_pop_tests/compare_pops.geste-outputformat'
-    params:
-        in_format = 'PED',
-        out_format = 'GESTE_BAYE_SCAN'
+        popmap_para = 'output/070_bayescan/popmap_para.txt',
+        popmap_2pops = 'output/070_bayescan/popmap_2pops.txt'
     singularity:
-        pgdspider_container
+        r_container
     log:
-        'output/logs/070_pop_tests/pgdspider_4pops.log'
-    shell:
-        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.ped} '
-        '-inputformat {params.in_format} '
-        '-outputfile {output}'
-        '-outputformat {params.out_format} '
-        '-spid {input.spid} '
-        '&> {log}'
-
-rule add_popdata_to_ped:
-    input:
-        ped_file = 'output/060_pop_genet/snps.ped',
-        para_info = process_reads('output/010_config/tidy_sample_info.tsv')
-    output:
-        'output/070_pop_tests/pop_para_snps.ped'
-    log:
-        'output/logs/070_pop_tests/add_popdata_to_ped.log'
+        'output/logs/070_bayescan/make_bayescan_popmaps.log'
     script:
-        'src/add_popdata_to_ped.R'
+        'src/make_bayescan_popmaps.R'
+
+
+#Convert vcf data into geste format (with 4 populations)for bayescan. 
+# Note that the popmap is actually specified within the spid file
+rule make_bayescan_input_4pops: 
+    input:
+        vcf = 'output/060_pop_genet/populations.snps.vcf',
+        spid = 'data/convert_4pops.spid',
+        popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+    output:
+        'output/070_bayescan/compared_4pops.geste-outputformat'
+    params:
+        in_format = 'VCF',
+        out_format = 'GESTE_BAYE_SCAN',
+        out_path = 'output/070_bayescan/compared_4pops.geste'
+    singularity:
+        pgdspider_container
+    threads:
+        50
+    log:
+        'output/logs/070_bayescan/pgdspider_4pops.log'
+    shell:
+        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
+        '-inputfile {input.vcf} '
+        '-inputformat {params.in_format} '
+        '-outputfile {params.out_path}'
+        '-outputformat {params.out_format} '
+        '-spid {input.spid} '
+        '&> {log}'
+
 
 # Run populations again on filtered data to get population summary statistics
 rule populations_stats:
