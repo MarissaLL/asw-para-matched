@@ -103,10 +103,6 @@ rule target:
 
 
 
-
-
-
-
 rule bayescan:
     input:
         genotypes = expand('output/070_bayescan/{run}.geste-outputformat',
@@ -142,49 +138,31 @@ rule bayescan:
         '-out_freq '
         '&> {log}'
 
-rule make_bayescan_input_2pops:
-    input: 
-        vcf = 'output/060_pop_genet/populations.snps.vcf',
-        spid = 'data/convert_2pops.spid',
-        popmap = 'output/070_bayescan/popmap_2pops.txt'
-    output:
-        'output/070_bayescan/compared_2pops.geste-outputformat'
-    params:
-        in_format = 'VCF',
-        out_format = 'GESTE_BAYE_SCAN',
-        out_path = 'output/070_bayescan/compared_2pops.geste'
-    singularity:
-        pgdspider_container
-    threads:
-        50
-    log:
-        'output/logs/070_bayescan/pgdspider_para.log'
-    shell:
-        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.vcf} '
-        '-inputformat {params.in_format} '
-        '-outputfile {params.out_path}'
-        '-outputformat {params.out_format} '
-        '-spid {input.spid} '
-        '&> {log}'
 
-rule make_bayescan_input_para:
-    input: 
+#Convert vcf data into geste format for bayescan. 
+# Note that the popmap is actually specified within the spid file
+rule convert_bayescan_inputs: 
+    input:
         vcf = 'output/060_pop_genet/populations.snps.vcf',
-        spid = 'data/convert_para.spid',
-        popmap = 'output/070_bayescan/popmap_para.txt'
+        spid = expand('data/{run}.spid',
+                      run = bayescan_runs),
+        popmap = expand('output/070_bayescan/popmap_{run}.txt',
+                        run = bayescan_runs)
     output:
-        'output/070_bayescan/compared_para.geste-outputformat'
+        expand('output/070_bayescan/{run}.geste-outputformat',
+                run = bayescan_runs)
     params:
         in_format = 'VCF',
         out_format = 'GESTE_BAYE_SCAN',
-        out_path = 'output/070_bayescan/compared_para.geste'
+        out_path = expand('output/070_bayescan/{run}.geste',
+                          run = bayescan_runs)
     singularity:
         pgdspider_container
     threads:
         50
     log:
-        'output/logs/070_bayescan/pgdspider_para.log'
+        expand('output/logs/070_bayescan/pgdspider_{run}.log',
+                run = bayescan_runs)
     shell:
         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
         '-inputfile {input.vcf} '
@@ -199,44 +177,17 @@ rule make_bayescan_popmaps:
         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt',
         para_data = process_reads('output/010_config/tidy_sample_info.tsv')
     output:
-        popmap_para = 'output/070_bayescan/popmap_para.txt',
-        popmap_2pops = 'output/070_bayescan/popmap_2pops.txt'
+        popmap_4pops = 'output/070_bayescan/popmap_compared_4pops.txt',
+        popmap_para = 'output/070_bayescan/popmap_compared_para.txt',
+        popmap_2pops = 'output/070_bayescan/popmap_compared_2pops.txt'
     singularity:
         r_container
+    threads:
+        25
     log:
         'output/logs/070_bayescan/make_bayescan_popmaps.log'
     script:
         'src/make_bayescan_popmaps.R'
-
-
-#Convert vcf data into geste format (with 4 populations)for bayescan. 
-# Note that the popmap is actually specified within the spid file
-rule make_bayescan_input_4pops: 
-    input:
-        vcf = 'output/060_pop_genet/populations.snps.vcf',
-        spid = 'data/convert_4pops.spid',
-        popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
-    output:
-        'output/070_bayescan/compared_4pops.geste-outputformat'
-    params:
-        in_format = 'VCF',
-        out_format = 'GESTE_BAYE_SCAN',
-        out_path = 'output/070_bayescan/compared_4pops.geste'
-    singularity:
-        pgdspider_container
-    threads:
-        50
-    log:
-        'output/logs/070_bayescan/pgdspider_4pops.log'
-    shell:
-        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.vcf} '
-        '-inputformat {params.in_format} '
-        '-outputfile {params.out_path}'
-        '-outputformat {params.out_format} '
-        '-spid {input.spid} '
-        '&> {log}'
-
 
 # Run populations again on filtered data to get population summary statistics
 rule populations_stats:
