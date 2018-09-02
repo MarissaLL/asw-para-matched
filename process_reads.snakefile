@@ -82,12 +82,17 @@ all_indivs = sorted(set(y for x in all_fcs for y in fc_to_indiv[x]))
 
 
 rule target:
-	input:
-		'output/010_config/filtering_stats.csv',
-		'output/010_config/full_popmap.txt',
+    input:
+        #'output/010_config/filtering_stats.csv',
+        'output/010_config/full_popmap.txt',
         'output/010_config/tidy_sample_info.tsv',
-		expand('output/022_fastqc/{individual}_fastqc.zip',
-               individual=all_indivs)
+        expand('output/022_fastqc/before_filter/{individual}_fastqc.zip',
+               individual=all_indivs),
+        expand('output/022_fastqc/after_filter/{individual}_fastqc.zip',
+               individual=all_indivs),
+        expand('output/021_filtered/readlength_hist/{individual}.txt',
+                individual=all_indivs)
+        
 
 rule generate_popmap:
     input:
@@ -105,19 +110,19 @@ rule generate_popmap:
                       header=False,
                       index=False)
 
-rule fastqc:
+rule fastqc_after_filter:
     input:
         expand('output/021_filtered/{individual}.fq.gz',
                individual=all_indivs)
     output:
-        expand('output/022_fastqc/{individual}_fastqc.zip',
+        expand('output/022_fastqc/after_filter/{individual}_fastqc.zip',
                individual=all_indivs)
     params:
-        outdir='output/022_fastqc'
+        outdir='output/022_fastqc/after_filter'
     threads:
         10
     log:
-        'output/logs/022_fastqc/fastqc.log'
+        'output/logs/022_fastqc/after_filter_fastqc.log'
     shell:
         'fastqc '
         '-o {params.outdir} '
@@ -138,14 +143,57 @@ rule combine_stats:
     script:
         'src/combine_stats.R'
 
-rule filter_adapters:
+# rule filter_adapters:
+#     input:
+#         FQ = 'output/020_demux/{individual}.fq.gz'
+#     output:
+#         kept_FQ = 'output/021_filtered/{individual}.fq.gz',
+#         discarded_FQ = 'output/021_filtered/discarded_FQ/{individual}.fq.gz',
+#         adapter_stats = 'output/021_filtered/adapter_stats/{individual}.txt',
+#         truncation_stats = 'output/021_filtered/truncation_stats/{individual}.txt',
+#         gc_hist = 'output/021_filtered/gc_hist/{individual}.txt'
+#     params:
+#         adapters = 'data/bbduk_adapters.fa'
+#     threads:
+#         1
+#     log:
+#         adapter_log = 'output/logs/021_filtered/{individual}_adapters.log',
+#         truncation_log = 'output/logs/021_filtered/{individual}_truncation.log'
+#     benchmark: 
+#         'output/benchmarks/021_filtered/{individual}.txt'
+#     shell:
+#         'bbduk.sh '
+#         'threads={threads} '
+#         'in={input.FQ} '
+#         'interleaved=f '
+#         'out=stdout.fq '
+#         'stats={output.adapter_stats} '
+#         'ref={params.adapters} '
+#         'ktrim=r k=23 mink=11 hdist=1 '
+#         'findbestmatch=t '
+#         'gchist={output.gc_hist} '
+#         'gcbins=auto '
+#         '&> {log.adapter_log} '
+#         ' | '
+#         'bbduk.sh '
+#         'threads={threads} '
+#         'in=stdin.fq '
+#         'interleaved=f '
+#         'outnonmatch={output.kept_FQ} '
+#         'outmatch={output.discarded_FQ} '
+#         'stats={output.truncation_stats} '
+#         'overwrite=t '
+#         'forcetrimright=79 '
+#         'minlength=80 '
+#         'ziplevel=9 '
+#         '&> {log.truncation_log}'
+ 
+rule calc_insert_length:
     input:
         FQ = 'output/020_demux/{individual}.fq.gz'
     output:
-        kept_FQ = 'output/021_filtered/{individual}.fq.gz',
-        discarded_FQ = 'output/021_filtered/discarded_FQ/{individual}.fq.gz',
+        readlength_hist = 'output/021_filtered/readlength_hist/{individual}.txt',
         adapter_stats = 'output/021_filtered/adapter_stats/{individual}.txt',
-        truncation_stats = 'output/021_filtered/truncation_stats/{individual}.txt',
         gc_hist = 'output/021_filtered/gc_hist/{individual}.txt'
     params:
         adapters = 'data/bbduk_adapters.fa'
@@ -153,7 +201,7 @@ rule filter_adapters:
         1
     log:
         adapter_log = 'output/logs/021_filtered/{individual}_adapters.log',
-        truncation_log = 'output/logs/021_filtered/{individual}_truncation.log'
+        readlength_log = 'output/logs/021_filtered/{individual}_readlength.log'
     benchmark: 
         'output/benchmarks/021_filtered/{individual}.txt'
     shell:
@@ -161,28 +209,41 @@ rule filter_adapters:
         'threads={threads} '
         'in={input.FQ} '
         'interleaved=f '
-        'out=stdout.fq '
         'stats={output.adapter_stats} '
         'ref={params.adapters} '
         'ktrim=r k=23 mink=11 hdist=1 '
         'findbestmatch=t '
-        '2> {log.adapter_log} '
-        ' | '
-        'bbduk.sh '
-        'threads={threads} '
-        'in=stdin.fq '
-        'interleaved=f '
-        'outnonmatch={output.kept_FQ} '
-        'outmatch={output.discarded_FQ} '
-        'stats={output.truncation_stats} '
+        'outnonmatch=stdout.fq '
         'gchist={output.gc_hist} '
         'gcbins=auto '
-        'overwrite=t '
-        'forcetrimright=79 '
-        'minlength=80 '
-        'ziplevel=9 '
-        '2> {log.truncation_log}'
-        
+        '&> {log.adapter_log} '
+        ' | '
+        'readlength.sh '
+        'in=stdin.fq '
+        'out={output.readlength_hist} '
+        'binsize=1 '
+        '&> {log.readlength_log}'
+
+
+rule fastqc_before_filter:
+    input:
+        expand('output/020_demux/{individual}.fq.gz',
+               individual=all_indivs)
+    output:
+        expand('output/022_fastqc/before_filter/{individual}_fastqc.zip',
+               individual=all_indivs)
+    params:
+        outdir='output/022_fastqc/before_filter'
+    threads:
+        10
+    log:
+        'output/logs/022_fastqc/before_filter_fastqc.log'
+    shell:
+        'fastqc '
+        '-o {params.outdir} '
+        '-t {threads} '
+        '{input} '
+        '&> {log}'       
 
 for fc in all_fcs:
     rule:
