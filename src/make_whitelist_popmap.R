@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-library(dplyr)
 library(adegenet)
 library(tidyverse)
+
 
 ###########
 # Globals #
@@ -44,15 +44,17 @@ locus_names <- locNames(SNP_data) %>%
   as.tibble() %>% 
   mutate("locus_ID" = str_split(value, 
                                 "_", 
-                                simplify = TRUE)[,1])
+                                simplify = TRUE)[,1]) %>% 
+  mutate("SNP_ID" = str_split(value,
+                              "_",
+                              simplify = TRUE)[,2])
 
 # Separate locus ID
-locus_IDs <- unique(locus_names$locus_ID) %>% 
-  as.tibble()
- 
+whitelist_IDs <- select(locus_names, locus_ID, SNP_ID) 
 
+ 
 # Write the locus whitelist
-write_delim(locus_IDs, 
+write_delim(whitelist_IDs, 
             path = whitelist, 
             delim = "\t", 
             col_names = FALSE)
