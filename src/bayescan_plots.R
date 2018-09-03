@@ -4,13 +4,14 @@ library(tidyverse)
 
 
 
-sel <- read.table('output/070_pop_tests/compared_pops.sel')
-fst_tbl <- read.table('output/070_pop_tests/compared_pops_fst.txt')
+sel <- read.table('output/070_pop_tests/compared_4pops.sel')
+fst_tbl <- read.table('output/070_pop_tests/compared_4pops_fst.txt')
 
 sel <- read.table('output/070_pop_tests/compared_para.sel')
 fst_tbl <- read.table('output/070_pop_tests/compared_para_fst.txt')
 
-
+sel <- read.table('output/070_pop_tests/compared_2pops.sel')
+fst_tbl <- read.table('output/070_pop_tests/compared_2pops_fst.txt')
 
 
 # Evaluate convergence
@@ -38,7 +39,7 @@ ggplot(fst_tbl, aes(x = index, y = alpha, colour = sig)) +
 ggplot(fst_tbl, aes(x = qval, y = alpha, colour = sig)) +
   geom_point(alpha = 0.3)
 
-sum(fst_tbl$sig == 'sig')
+sum(fst_tbl$sig == 'non-sig')
 
 
 

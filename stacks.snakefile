@@ -159,7 +159,8 @@ rule cstacks:
     threads:
         75
     params:
-        stacks2b_dir = 'output/040_stacks'
+        stacks2b_dir = 'output/040_stacks',
+        n = '5'
     singularity:
         stacks2b_container
     log:
@@ -169,7 +170,7 @@ rule cstacks:
         '-p {threads} '
         '-P {params.stacks2b_dir} '
         '-M {input.popmap} '
-        '-n 5 '
+        '-n {params.n} '
         '&> {log}'
 
 rule combine_coverage:

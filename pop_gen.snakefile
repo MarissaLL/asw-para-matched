@@ -26,82 +26,43 @@ subworkflow stacks:
 rule target:
     input:
         'output/060_pop_genet/populations.snps.vcf',
-        expand('output/070_bayescan/{run}.sel',
-               run = bayescan_runs)
-        #'output/080_pop_simulations/fsc_sfs.txt',
-        #'fsc_test/test.arp'
+        'output/090_pop_genet/populations.snps.vcf',
+        'output/060_pop_genet/filtered_snps.gds'
+        #expand('output/070_bayescan/{run}.sel',
+        #       run = bayescan_runs)
 
 
 
 
 
-# rule subset_snps:
-#     input:
-#         stacks('output/040_stacks/catalog.fa.gz'),
-#         stacks('output/040_stacks/catalog.calls'),
-#         popmap = 'output/080_test/shortened_popmap.txt',
-#         whitelist = 'output/080_test/whitelist.txt'
-#     output:
-#         'output/080_test/populations.snps.genepop'
-#     params:
-#         stacks_dir = 'output/040_stacks',
-#         outdir = 'output/080_test'
-#     singularity:
-#         stacks2beta_container
-#     threads:
-#         50
-#     log:
-#         'output/logs/080_test/pops_stats.log'
-#     shell:
-#         'populations '
-#         '-P {params.stacks_dir} '
-#         '-M {input.popmap} '
-#         '-O {params.outdir} '
-#         '-W {input.whitelist} '
-#         '-t {threads} '
-#         '-r 0 '
-#         '--genepop '
-#         '--write_random_snp '
-#         '&> {log}'  
 
-# rule simulate_sfs:
-#     input:
-#         par = 'fsc_test/test.par',
-#         obs = 'fsc_test/test_MAFpop0.obs'
-#     output:
-#         'fsc_test/test.arp'
-#     singularity:
-#         fastsimcoal_container
-#     shell:
-#         'fsc26 '
-#         '--ifile {input.par} '
-#         '--noarloutput '
-#         '--dnatosnp 0 '
-#         '--msfs '
-#         '--numsims 1000 '
-#         '--seed 1234 '
-
-
-# rule calculate_obs_sfs:
-#     input:
-#         vcf = 'output/060_pop_genet/populations.snps.vcf',
-#         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
-#     output:
-#         sfs_popmap = 'output/080_pop_simulations/sfs_popmap.txt',
-#         dadi = 'output/080_pop_simulations/dadi.txt',
-#         fsc = 'output/080_pop_simulations/fsc_sfs.txt'
-#     params:
-#         vcf2sfs = 'vcf2sfs.R'
-#     singularity:
-#         r_container
-#     threads:
-#         20
-#     log:
-#         'output/logs/080_pop_simulations/sfs_calcs.log'
-#     script:
-#         'src/sfs_calcs.R'
-
-
+rule populations_three:
+    input:
+        stacks('output/040_stacks/catalog.fa.gz'),
+        stacks('output/040_stacks/catalog.calls'),
+        popmap = 'test/r0.2_filtered_popmap.txt',
+        whitelist = 'test/m0_whitelist.txt'
+    output:
+        'output/090_pop_genet/populations.snps.vcf'
+    params:
+        stacks_dir = 'output/040_stacks',
+        outdir = 'output/090_pop_genet'
+    singularity:
+        stacks2beta_container
+    threads:
+        50
+    log:
+        'output/logs/090_pop_genet/pops_stats.log'
+    shell:
+        'populations '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-O {params.outdir} '
+        '-W {input.whitelist} '
+        '-t {threads} '
+        '-r 0 '
+        '--vcf '
+        '&> {log}'
 
 rule bayescan:
     input:
@@ -141,6 +102,7 @@ rule bayescan:
 
 #Convert vcf data into geste format for bayescan. 
 # Note that the popmap is actually specified within the spid file
+# This has only produced one of the three output files. FIX...
 rule convert_bayescan_inputs: 
     input:
         vcf = 'output/060_pop_genet/populations.snps.vcf',
@@ -150,7 +112,7 @@ rule convert_bayescan_inputs:
                         run = bayescan_runs)
     output:
         expand('output/070_bayescan/{run}.geste-outputformat',
-                run = bayescan_runs)
+               run = bayescan_runs)
     params:
         in_format = 'VCF',
         out_format = 'GESTE_BAYE_SCAN',
@@ -162,7 +124,7 @@ rule convert_bayescan_inputs:
         50
     log:
         expand('output/logs/070_bayescan/pgdspider_{run}.log',
-                run = bayescan_runs)
+               run = bayescan_runs)
     shell:
         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
         '-inputfile {input.vcf} '
@@ -188,6 +150,19 @@ rule make_bayescan_popmaps:
         'output/logs/070_bayescan/make_bayescan_popmaps.log'
     script:
         'src/make_bayescan_popmaps.R'
+
+rule convert_gds_again:
+    input:
+        'output/060_pop_genet/populations.snps.vcf'
+    output:
+        'output/060_pop_genet/filtered_snps.gds'
+    threads:
+        25
+    log:
+        'output/logs/060_pop_genet/filtered_gds_convert.log'
+    script:
+        'src/convert_gds.R'
+
 
 # Run populations again on filtered data to get population summary statistics
 rule populations_stats:
@@ -234,6 +209,8 @@ rule make_whitelist_popmap:
         'output/logs/060_pop_genet/make_whitelist_popmap.log'
     script:
         'src/make_whitelist_popmap.R'
+
+# Used for DAPC here
 
 # Convert ped to plink format, with unknown chromosomes
 rule convert_to_plinkraw:

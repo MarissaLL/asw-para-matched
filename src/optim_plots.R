@@ -1,7 +1,7 @@
-library(ggplot2)
-library(dplyr)
+library(scales)
 library(tidyverse)
 
+label_func <- function(x) {gsub("[[:alpha:]]", "", x)}
 
 popstats_combined_Mm = read.csv("output_20180614/030_optim/stats_Mm/popstats_combined.csv")
 samplestats_combined_Mm = read.csv("output_20180614/030_optim/stats_Mm/samplestats_combined.csv")
@@ -42,6 +42,7 @@ M_r0.8 <- popstats_Mm_gathered %>%
 jd <- position_jitterdodge(jitter.width = 0.15, dodge.width = 0.9)
 d <- position_dodge(width = 0.9)
 
+
 # Plot assembled loci, polymorphic loci and snps at different values of m
 ggplot(plot_m, mapping = aes(x = m, 
                              y = value, 
@@ -61,7 +62,8 @@ ggplot(plot_m, mapping = aes(x = m,
              labeller = as_labeller(facet_labels)) +
   theme_classic() +
   theme(strip.placement = "outside", 
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(x = "Value of m parameter" ) 
 
 # Plot M
 ggplot(plot_M, mapping = aes(x = M, 
@@ -82,7 +84,8 @@ ggplot(plot_M, mapping = aes(x = M,
              labeller = as_labeller(facet_labels)) +
   theme_classic() +
   theme(strip.placement = "outside", 
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(x = "Value of M parameter")
 
 # Gather n
 samples_n_gathered <- samplestats_combined_n %>% 

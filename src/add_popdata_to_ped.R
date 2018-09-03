@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 
+library(SNPRelate)
 library(tidyverse)
 
 ###########
@@ -21,6 +22,7 @@ log_file <- snakemake@log[[1]]
 log <- file(log_file, open = "wt")
 sink(log, type = "message")
 sink(log, append = TRUE, type = "output")
+
 
 # Load the ped that needs population and parasitism data added to the first and sixth columns
 ped_data <- read_delim(ped_file, delim = '\t', col_names = FALSE)

@@ -23,7 +23,7 @@ sink(log, type = "message")
 sink(log, append = TRUE, type = "output")
 
 # Read in and reformat data
-para <- read.csv(para_file) %>% 
+para <- read_csv(para_file) %>% 
   as_tibble() %>% 
   filter(Head =="TRUE") %>% 
   mutate_at("Parasitoid", replace_na, "FALSE") %>%       
