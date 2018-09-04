@@ -25,7 +25,8 @@ subworkflow stacks:
 
 rule target:
     input:
-        'output/060_pop_genet/populations.snps.vcf'
+        'output/060_pop_genet/populations.snps.vcf',
+        'output/070_bayescan/popmap_compared_invermay.txt'
         #expand('output/070_bayescan/{bayescan_run}.sel',
         #       bayescan_run = bayescan_runs)
 
@@ -98,7 +99,11 @@ rule make_bayescan_popmaps:
     output:
         popmap_4pops = 'output/070_bayescan/popmap_compared_4pops.txt',
         popmap_para = 'output/070_bayescan/popmap_compared_para.txt',
-        popmap_2pops = 'output/070_bayescan/popmap_compared_2pops.txt'
+        popmap_2pops = 'output/070_bayescan/popmap_compared_2pops.txt',
+        popmap_ruakura = 'output/070_bayescan/popmap_compared_ruakura.txt',
+        popmap_ruakura_poa = 'output/070_bayescan/popmap_compared_ruakura_poa.txt',
+        popmap_lincoln = 'output/070_bayescan/popmap_compared_lincoln.txt',
+        popmap_invermay = 'output/070_bayescan/popmap_compared_invermay.txt'
     singularity:
         r_container
     threads:
