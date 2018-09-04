@@ -4,21 +4,24 @@ output: html_document
 ---
 
 ```{r setup, message=FALSE}
-library(ggplot2)
 library(ggmap)
 library(maps)
+library(tidyverse)
 ```
 
-```{r load in map outline, input data}
+```{r load data}
+loc_file <- snakemake@input[[1]]
+
+#'data/sampling_locations.txt'
+```
+
+```{r load in map outline, input label positions}
+# Load file containing the coordinates for sampling locations
+sampling_loc <- read_delim(file = loc_file , delim = '\t', col_names = FALSE) %>% 
+  rename(pop = X1, lat = X2, long = X3)
+
 # Load in map from maps package
 nz_map <- map_data("nz")
-
-# Define sampling location points. 
-sampling_loc <-  data.frame(
-  long = c(175.310, 172.472, 170.348),
-  lat = c(-37.774,-43.634, -45.878),
-  names = c('Ruakura', 'Lincoln', 'Invermay'),
-  stringsAsFactors = FALSE)  
 
 # Manually specify label position to make it better
 lab_pos <- c(1.6, -0.8, -0.5)
@@ -41,7 +44,7 @@ ggplot() +
   geom_text(data = sampling_loc, 
             mapping = aes(x = long, 
                           y = lat, 
-                          label = names), 
+                          label = pop), 
             hjust= lab_pos) +
   theme_classic() + 
   theme(axis.line.x.top = element_line(), 

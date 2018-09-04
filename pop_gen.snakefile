@@ -11,7 +11,9 @@ pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5
 r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 
-bayescan_runs = ['compared_4pops', 'compared_para', 'compared_2pops']
+bayescan_runs = ['compared_4pops', 'compared_para', 'compared_2pops', 
+                 'compared_invermay', 'compared_lincoln', 'compared_ruakura',
+                 'compared_ruakura_poa']
 
 #########
 # RULES #
@@ -26,9 +28,9 @@ subworkflow stacks:
 rule target:
     input:
         'output/060_pop_genet/populations.snps.vcf',
-        'output/070_bayescan/popmap_compared_invermay.txt'
-        #expand('output/070_bayescan/{bayescan_run}.sel',
-        #       bayescan_run = bayescan_runs)
+        'output/070_bayescan/popmap_compared_invermay.txt',
+        expand('output/070_bayescan/{bayescan_run}.sel',
+              bayescan_run = bayescan_runs)
 
 
 # Run bayescan to detect outlying SNPs

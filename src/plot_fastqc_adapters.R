@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 library(data.table)
+library(scales)
 library(tidyverse)
 
 #############
@@ -48,6 +49,10 @@ extract_plot_data <- function(data_dir){
 before_data_dir <- 'output/022_fastqc/before_filter'
 after_data_dir <- 'output/022_fastqc/after_filter'
 
+I11_gc_file <- 'fastqc_examples/I11_fastqc/out04'
+
+
+
 ########
 # Main #
 ########
@@ -64,4 +69,27 @@ ggplot(mapping = aes(x = as.numeric(position), y = as.numeric(value), group = L1
   geom_line(data = before_plot, colour = "#990000") +
   labs(x = "Position along read", y = "Adapter content for all reads within individual (%)") +
   theme_classic() 
-  
+
+# Read in an example file with an odd gc distribution
+gc_content <- read_delim(I11_gc_file, delim = '\t', skip = 2)
+
+# Parameters for the theoretical distribution. Currently just fudged, FIX THIS
+mean_value <-  60 #gc_content$`#GC Content`[max(gc_content$Count)]
+sd_value <- 12
+n_value <-  6000000
+
+
+# Plot the actual and theoretical gc distributions
+ggplot(gc_content, aes(x = `#GC Content`, y = Count)) + 
+  geom_line() +
+  theme_classic() +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Mean GC content (%)",
+       y = "GC Count") +
+  stat_function(fun = function(x, mean, sd, n, bw){ 
+    dnorm(x = x, mean = mean, sd = sd) * n * bw}, 
+    args = c(mean = mean_value, 
+             sd = sd_value, 
+             n = n_value, 
+             bw = 1), 
+    colour = "#990000")

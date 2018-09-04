@@ -116,3 +116,4 @@ ggplot(samples_n_gathered, mapping = aes(x = n,
   theme(strip.placement = "outside", 
         strip.background = element_blank()) +
   labs(x = "Value of n parameter")
+
