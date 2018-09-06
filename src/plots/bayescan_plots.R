@@ -1,20 +1,74 @@
+#!/usr/bin/env Rscript
+
 library(boa)
 library(coda)
+library(scales)
 library(tidyverse)
 
+#############
+# FUNCTIONS #
+#############
+
+list_sel_data <- function(data_dir){
+  key_files <- list.files(data_dir,
+                          recursive = FALSE,
+                          pattern = ".sel",
+                          full.names = TRUE) 
+  sel_file_names <- key_files %>% str_replace("//", "/")
+  return(sel_file_names)}
+
+list_fst_data <- function(data_dir){
+  key_files <- list.files(data_dir,
+                          recursive = FALSE,
+                          pattern = "_fst.txt",
+                          full.names = TRUE) 
+  fst_file_names <- key_files %>% str_replace("//", "/")
+  return(fst_file_names)}
+
+###########
+# Globals #
+###########
+
+sel <- read.table('output/070_bayescan/compared_4pops.sel')
+sel <- read.table('output/070_bayescan/compared_lincoln.sel')
+sel <- read.table('output/070_bayescan/compared_ruakura_poa.sel')
+sel <- read.table('output/070_bayescan/compared_para.sel')
+sel <- read.table('output/070_bayescan/compared_2pops.sel')
+# sel <- read.table('output/070_bayescan/compared_ruakura.sel')
+# sel <- read.table('output/070_bayescan/compared_invermay.sel')
+# sel <- read.table('output/070_bayescan/compared_2pops.sel')
+
+fst_tbl <- read.table('output/070_bayescan/compared_4pops_fst.txt')
+fst_tbl <- read.table('output/070_bayescan/compared_lincoln_fst.txt')
+fst_tbl <- read.table('output/070_bayescan/compared_ruakura_poa_fst.txt')
+fst_tbl <- read.table('output/070_bayescan/compared_para_fst.txt')
+fst_tbl <- read.table('output/070_bayescan/compared_2pops_fst.txt')
+# sel <- read.table('output/070_bayescan/compared_ruakura_fst.txt')
+# sel <- read.table('output/070_bayescan/compared_invermay_fst.txt')
+# sel <- read.table('output/070_bayescan/compared_2pops_fst.txt')
 
 
-sel <- read.table('output/070_pop_tests/compared_4pops.sel')
-fst_tbl <- read.table('output/070_pop_tests/compared_4pops_fst.txt')
+# 
 
-sel <- read.table('output/070_pop_tests/compared_para.sel')
-fst_tbl <- read.table('output/070_pop_tests/compared_para_fst.txt')
+data_dir <- 'output/070_bayescan/'
 
-sel <- read.table('output/070_pop_tests/compared_2pops.sel')
-fst_tbl <- read.table('output/070_pop_tests/compared_2pops_fst.txt')
+########
+# Main #
+########
 
+################## Trying to set up to analyse all the results in one go ###############
+# List data files
+sel_files <-  list_sel_data(data_dir)
+fst_files <- list_fst_data(data_dir)
+
+# Read in data files
+sels <- lapply(sel_files, read.table)
 
 # Evaluate convergence
+chains <- lapply(sel_data, mcmc, thin = 10)
+
+
+## One by one
 chain <-  mcmc(sel, thin = 10)
 
 plot(chain)
@@ -34,11 +88,15 @@ fst_tbl <- fst_tbl %>%
 
 ggplot(fst_tbl, aes(x = index, y = alpha, colour = sig)) +
   geom_point(alpha = 0.3) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        legend.position = "none") 
+  
 
 ggplot(fst_tbl, aes(x = qval, y = alpha, colour = sig)) +
   geom_point(alpha = 0.3)
 
+sum(fst_tbl$sig == 'sig')
 sum(fst_tbl$sig == 'non-sig')
 
 
