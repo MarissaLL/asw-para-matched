@@ -1,10 +1,8 @@
-library(ggplot2)
-library(grid)
-library(gtable)
+library(reshape2)
 library(SNPRelate)
 library(tidyverse)
-library(reshape2)
-library(stringr)
+library(xtable)
+
 
 # Fst
 LR_fst <- read_delim('output/060_pop_genet/populations.fst_R-L.tsv', delim = '\t')
@@ -19,6 +17,10 @@ sig <- filter(LR_fst, LR_fst$`Corrected AMOVA Fst`<0.005)
 # Between populations summary Fst
 Fst_summary <- read_delim('output/060_pop_genet/populations.fst_summary.tsv', delim = '\t', col_names = TRUE) 
 pop_order <- c("I", "L", "R", "Rpoa")
+
+# Pairwise summary stats table formatted for latex
+xtable(Fst_summary, digits = 4)
+
 
  Fst_table <- Fst_summary %>% 
   melt(id.vars = 'X1') %>% 
@@ -61,105 +63,6 @@ all_pos_pop_sumstats <- read_delim('output/060_pop_genet/populations.sumstats_su
 var_pos_pop_sumstats %>% 
   select(`# Pop ID`, Private, P, Obs_Het, Exp_Het, Pi, Fis ) %>% 
   xtable(digits = 5)
-
-
-
-
-
-########## identity by state. ###############
-
-GDSfile <- 'output/060_pop_genet/filtered_snps.gds'
-GDSdata <-  snpgdsOpen(GDSfile)
-
-IBS <- snpgdsIBS(gdsobj = GDSdata, autosome.only = FALSE)
-
-IBS_plot <-  IBS$ibs
-colnames(IBS_plot) <- IBS$sample.id 
-rownames(IBS_plot) <- IBS$sample.id
-
-# use ward.d2 or average
-hc <- hclust(as.dist(1 - IBS_plot), method = "ward.D2")
-
-
-indiv_order <- hc$labels[hc$order]
-
-
-
-IBS_plot2 <- melt(IBS_plot) %>%
-  mutate(Var1 = factor(Var1, levels = indiv_order), Var2 = factor(Var2, levels = indiv_order))
-
-for_pop <- IBS_plot2 %>% 
-  filter(Var2 == 'R2') %>% 
-  mutate(pop = str_replace_all(Var1, "[[:digit:]]", ""))
-
-para_info <-  read_delim('output/010_config/tidy_sample_info.tsv', delim = '\t')
-
-for_para <- IBS_plot2 %>% 
-  filter(Var2 == 'R2') 
-
-indiv_status <-  para_info$Parasitism
-names(indiv_status) <- para_info$Individual
-for_para$para <- indiv_status[for_para$Var1]
-
-# Colours for plot components. FIGURE OUT HOW TO APPLY THESE
-hs <- RColorBrewer::brewer.pal(6, "YlOrRd")
-pop_col <- RColorBrewer::brewer.pal(4, "PiYG")
-
-
-# Order of plot margin units is c(top, right, bottom, left)
-
-a <- ggplot(IBS_plot2, aes(x = Var1, y = Var2, fill = value)) + 
-  geom_raster() +
-  scale_fill_gradientn(colours = hs) +
-  theme_void() +
-  theme(legend.position = "none", 
-        plot.margin=unit(c(0,0,0,0), "cm"))
-
-b <- ggplot(for_pop, aes(x = Var1, y = Var2, fill = pop)) + 
-  geom_raster() +
-  theme_void() +
-  theme(legend.position = "none",
-        plot.margin=unit(c(0, 0, 0, 0), "cm"))
-
-c <- ggplot(for_para, aes(x = Var1, y = Var2, fill = para)) + 
-  geom_raster() +
-  theme_void() +
-  theme(legend.position = "none",
-        plot.margin=unit(c(-0.2, 0, 0.2, 0), "cm"))
-
-d <- ggplot(for_pop, aes(x = Var2, y = Var1, fill = pop)) + 
-  geom_raster() +
-  theme_void() +
-  theme(legend.position = "none", 
-        plot.margin=unit(c(0, 0, 0, 0), "cm"))
-
-e <- ggplot(for_para, aes(x = Var2, y = Var1, fill = para)) + 
-  geom_raster() +
-  theme_void() +
-  theme(legend.position = "none", 
-        plot.margin=unit(c(0, -0.2, 0, 0.2), "cm"))
-
-grob_a <- ggplotGrob(a)
-grob_b <- ggplotGrob(b)
-grob_c <- ggplotGrob(c)
-grob_d <- ggplotGrob(d)
-grob_e <- ggplotGrob(e)
-blank_one <- rectGrob(gp = gpar(fill = "white",col = "white"))
-
-plot_pos <- matrix(list(grob_e, grob_d, grob_a, 
-                        blank_one, blank_one, grob_b, 
-                        blank_one, blank_one, grob_c), byrow = TRUE, nrow = 3, ncol = 3) 
-
-
-g <- gtable_matrix(name = "IBS_plot",
-                   grobs = plot_pos, 
-                   widths = unit(c(1,1,25), "cm"),
-                   heights = unit(c(25, 1, 1), "cm"))
-
-grid.newpage()
-grid.draw(g)
-
-
 
 
 
