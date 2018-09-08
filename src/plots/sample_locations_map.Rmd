@@ -10,9 +10,9 @@ library(tidyverse)
 ```
 
 ```{r load data}
-loc_file <- snakemake@input[[1]]
+#loc_file <- snakemake@input[[1]]
 
-#'data/sampling_locations.txt'
+loc_file <- '../../data/sampling_locations.txt'
 ```
 
 ```{r load in map outline, input label positions}
