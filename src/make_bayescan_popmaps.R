@@ -12,6 +12,7 @@ para_datafile <- snakemake@input[["para_data"]]
 popmap_4pops <- snakemake@output[["popmap_4pops"]]
 popmap_para <- snakemake@output[["popmap_para"]]
 popmap_2pops <- snakemake@output[["popmap_2pops"]]
+popmap_island <- snakemake@output[["popmap_island"]]
 popmap_ruakura <- snakemake@output[["popmap_ruakura"]]
 popmap_ruakura_poa <- snakemake@output[["popmap_ruakura_poa"]]
 popmap_lincoln <- snakemake@output[["popmap_lincoln"]]
@@ -19,8 +20,8 @@ popmap_invermay <- snakemake@output[["popmap_invermay"]]
 log_file <- snakemake@log[[1]]
 
 #dev
-popmap_file <- 'output/060_pop_genet/r0.8_filtered_popmap.txt'
-para_datafile <- 'output/010_config/tidy_sample_info.tsv'
+# popmap_file <- 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+# para_datafile <- 'output/010_config/tidy_sample_info.tsv'
 
 
 ########
@@ -74,6 +75,16 @@ write_delim(x = map_I, path = popmap_invermay, delim = '\t', col_names = FALSE)
 write_delim(x = map_L, path = popmap_lincoln, delim = '\t', col_names = FALSE)
 write_delim(x = map_R, path = popmap_ruakura, delim = '\t', col_names = FALSE)
 write_delim(x = map_Rpoa, path = popmap_ruakura_poa, delim = '\t', col_names = FALSE)
+
+# Replace population information with which island samples were from
+popmap_NS <- popmap_pop %>% 
+  mutate(island = case_when(X2 == "I" | X2 == "L" ~ "S",
+                            X2 == "R" | X2 == "Rpoa" ~ "N")) %>% 
+  select(X1,island)
+
+# Write out the popmap for comparison of north and south island
+write_delim(x = popmap_NS, path = popmap_island, delim = '\t', col_names = FALSE)
+
 
 
 # Log session info
