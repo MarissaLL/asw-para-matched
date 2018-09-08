@@ -34,17 +34,17 @@ sel <- read.table('output/070_bayescan/compared_lincoln.sel')
 sel <- read.table('output/070_bayescan/compared_ruakura_poa.sel')
 sel <- read.table('output/070_bayescan/compared_para.sel')
 sel <- read.table('output/070_bayescan/compared_2pops.sel')
-# sel <- read.table('output/070_bayescan/compared_ruakura.sel')
-# sel <- read.table('output/070_bayescan/compared_invermay.sel')
+sel <- read.table('output/070_bayescan/compared_ruakura.sel') # This one did not pass the Geweke diagnostic test
+sel <- read.table('output/070_bayescan/compared_invermay.sel')
 # sel <- read.table('output/070_bayescan/compared_2pops.sel')
 
 fst_tbl <- read.table('output/070_bayescan/compared_4pops_fst.txt')
-fst_tbl <- read.table('output/070_bayescan/compared_lincoln_fst.txt')
-fst_tbl <- read.table('output/070_bayescan/compared_ruakura_poa_fst.txt')
+fst_tbl_l <- read.table('output/070_bayescan/compared_lincoln_fst.txt')
+fst_tbl_rpoa <- read.table('output/070_bayescan/compared_ruakura_poa_fst.txt')
 fst_tbl <- read.table('output/070_bayescan/compared_para_fst.txt')
 fst_tbl <- read.table('output/070_bayescan/compared_2pops_fst.txt')
-# sel <- read.table('output/070_bayescan/compared_ruakura_fst.txt')
-# sel <- read.table('output/070_bayescan/compared_invermay_fst.txt')
+fst_tbl_r <- read.table('output/070_bayescan/compared_ruakura_fst.txt')
+fst_tbl_i <- read.table('output/070_bayescan/compared_invermay_fst.txt')
 # sel <- read.table('output/070_bayescan/compared_2pops_fst.txt')
 
 
@@ -68,7 +68,7 @@ sels <- lapply(sel_files, read.table)
 chains <- lapply(sel_data, mcmc, thin = 10)
 
 
-## One by one
+######################### One by one
 chain <-  mcmc(sel, thin = 10)
 
 plot(chain)
@@ -127,8 +127,37 @@ ggplot(sel, aes(x = Fst1)) +
 
 
 
+##### Four pops together #############
 
+lincoln_points <- fst_tbl_l %>% 
+  mutate(index = rownames(fst_tbl_l)) %>% 
+  mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig')) %>% 
+  mutate(location = "Lincoln")
 
+rpoa_points <- fst_tbl_rpoa %>% 
+  mutate(index = rownames(fst_tbl_rpoa)) %>% 
+  mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig')) %>% 
+  mutate(location = "Ruakura (Poa)")
 
+ruakura_points <- fst_tbl_r %>% 
+  mutate(index = rownames(fst_tbl_r)) %>% 
+  mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig')) %>% 
+  mutate(location = "Ruakura")
+
+invermay_points <- fst_tbl_i %>% 
+  mutate(index = rownames(fst_tbl_i)) %>% 
+  mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig')) %>% 
+  mutate(location = "Invermay")
+
+  
+combined_results <- bind_rows(lincoln_points, rpoa_points, ruakura_points, invermay_points)
+
+ggplot(combined_results, aes(x = index, y = alpha, colour = sig)) +
+  geom_point(alpha = 0.3) +
+  facet_grid(~location) +
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        legend.position = "none") +
+  scale_y_continuous(labels =function(n){format(n, scientific = FALSE)})
 
 
