@@ -76,6 +76,8 @@ filtered_para <- semi_join(para, filtered_indivs) %>%
 ##### PCA #####
 
 # Add population and parasitism data into the genlight
+indiv_to_pop <- filtered_para$pop
+names(indiv_to_pop) <- filtered_para$Individual
 
 pop(no_NA) <- indiv_to_pop[no_NA$ind.names]
 
@@ -144,8 +146,6 @@ write_delim(DAPC_para, dapc_para_results, delim = '\t')
 ########## DAPC between 4 pops #################
 
 # Add information about the population each sample came from to the 'pop' slot of the genlight
-indiv_to_pop <- filtered_para$pop
-names(indiv_to_pop) <- filtered_para$Individual
 no_NA_pop <- no_NA
 pop(no_NA_pop) <- indiv_to_pop[no_NA_pop$ind.names]
 
