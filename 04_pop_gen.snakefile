@@ -8,12 +8,20 @@
 bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d571b5e888e98e5b79f902c30388'
 fastsimcoal_container = 'shub://MarissaLL/singularity-containers:fastsimcoal_2.6@37ca431784b209574f517ee09263fca2'
 pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5@e546f843e2b84401284745a766546c90'
-r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
+r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1078bd77b7e550e72486881defed9bad'
+# r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
+vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@230db32b3097775cd51432092f9cbcb1'
 
-bayescan_runs = ['compared_4pops', 'compared_para', 'compared_2pops', 
+
+bayescan_runs = ['compared_island', 'compared_para', 'compared_2pops', 
                  'compared_invermay', 'compared_lincoln', 'compared_ruakura',
-                 'compared_ruakura_poa']
+                 'compared_ruakura_poa', 'compared_4pops']
+
+bayescan_subsets = ['compared_lincoln', 'compared_ruakura', 'compared_ruakura_poa', 
+                    'compared_invermay', 'compared_2pops']
+
+bayescan_full = ['compared_island', 'compared_4pops', 'compared_para']
 
 #########
 # RULES #
@@ -27,10 +35,16 @@ subworkflow stacks:
 
 rule target:
     input:
-        'output/060_pop_genet/populations.snps.vcf',
-        'output/070_bayescan/popmap_compared_invermay.txt',
+        # 'output/060_pop_genet/populations.snps.vcf',
+        # 'output/070_bayescan/popmap_compared_invermay.txt',
         expand('output/070_bayescan/{bayescan_run}.sel',
               bayescan_run = bayescan_runs)
+        # 'output/071_DAPC/dapc_para_results.tsv',
+        # expand('output/070_bayescan/{bayescan_subset}.geste-outputformat',
+        #         bayescan_subset = bayescan_subsets),
+        # expand('output/070_bayescan/{bayescan_full}.geste-outputformat',
+        #         bayescan_full = bayescan_full)
+
 
 
 # Run bayescan to detect outlying SNPs
@@ -67,31 +81,102 @@ rule bayescan:
 
 #Convert SNP data in VCF format into geste format for bayescan. 
 # Note that the location of the popmap is actually specified within the spid file
-rule convert_bayescan_inputs: 
+# It is only specified here to link the dependencies of the rules
+# rule convert_full_pop_bayescan_inputs: 
+#     input:
+#         vcf = 'output/060_pop_genet/populations.snps.vcf',
+#         spid = 'data/{bayescan_full}.spid',
+#         popmap = 'output/070_bayescan/popmap_{bayescan_full}.txt'
+#     output:
+#         'output/070_bayescan/{bayescan_full}.geste-outputformat'
+#     params:
+#         in_format = 'VCF',
+#         out_format = 'GESTE_BAYE_SCAN',
+#         out_path = 'output/070_bayescan/{bayescan_full}.geste'
+#     singularity:
+#         pgdspider_container
+#     threads:
+#         50
+#     log:
+#         'output/logs/070_bayescan/pgdspider_{bayescan_full}.log'
+#     shell:
+#         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
+#         '-inputfile {input.vcf} '
+#         '-inputformat {params.in_format} '
+#         '-outputfile {params.out_path}'
+#         '-outputformat {params.out_format} '
+#         '-spid {input.spid} '
+#         '&> {log}'
+
+# rule convert_subset_bayescan_inputs:
+#     input:
+#         vcf = 'output/070_bayescan/{bayescan_subset}.recode.vcf',
+#         spid = 'data/{bayescan_subset}.spid',
+#         popmap = 'output/070_bayescan/popmap_{bayescan_subset}.txt'
+#     output:
+#         'output/070_bayescan/{bayescan_subset}.geste-outputformat'
+#     params:
+#         in_format = 'VCF',
+#         out_format = 'GESTE_BAYE_SCAN',
+#         out_path = 'output/070_bayescan/{bayescan_subset}.geste'
+#     singularity:
+#         pgdspider_container
+#     threads:
+#         50
+#     log:
+#         'output/logs/070_bayescan/pgdspider_{bayescan_subset}.log'
+#     shell:
+#         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
+#         '-inputfile {input.vcf} '
+#         '-inputformat {params.in_format} '
+#         '-outputfile {params.out_path}'
+#         '-outputformat {params.out_format} '
+#         '-spid {input.spid} '
+#         '&> {log}'
+
+
+rule subset_vcfs:
     input:
-        vcf = 'output/060_pop_genet/populations.snps.vcf',
-        spid = 'data/{bayescan_run}.spid',
-        popmap = 'output/070_bayescan/popmap_{bayescan_run}.txt'
-    output:
-        'output/070_bayescan/{bayescan_run}.geste-outputformat'
+        individual_list = 'output/070_bayescan/{bayescan_subset}_indivs.txt',
+        full_vcf = 'output/060_pop_genet/populations.snps.vcf'
+    output: 
+        subset_vcf = 'output/070_bayescan/{bayescan_subset}.recode.vcf'
     params:
-        in_format = 'VCF',
-        out_format = 'GESTE_BAYE_SCAN',
-        out_path = 'output/070_bayescan/{bayescan_run}.geste'
+        outname = 'output/070_bayescan/{bayescan_subset}'
     singularity:
-        pgdspider_container
+        vcftools_container
     threads:
-        50
+        25
     log:
-        'output/logs/070_bayescan/pgdspider_{bayescan_run}.log'
+        'output/logs/070_bayescan/{bayescan_subset}_subset_vcf.log'
     shell:
-        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.vcf} '
-        '-inputformat {params.in_format} '
-        '-outputfile {params.out_path}'
-        '-outputformat {params.out_format} '
-        '-spid {input.spid} '
+        'vcftools '
+        '--vcf {input.full_vcf} '
+        '--out {params.outname} '
+        '--keep {input.individual_list} '
+        '--recode '
         '&> {log}'
+
+rule make_indiv_lists:
+    input:
+        popmap_2pops = 'output/070_bayescan/popmap_compared_2pops.txt',
+        popmap_ruakura = 'output/070_bayescan/popmap_compared_ruakura.txt',
+        popmap_ruakura_poa = 'output/070_bayescan/popmap_compared_ruakura_poa.txt',
+        popmap_lincoln = 'output/070_bayescan/popmap_compared_lincoln.txt',
+        popmap_invermay = 'output/070_bayescan/popmap_compared_invermay.txt'
+    output:
+        indivs_2pops = 'output/070_bayescan/compared_2pops_indivs.txt',
+        indivs_ruakura = 'output/070_bayescan/compared_ruakura_indivs.txt',
+        indivs_ruakura_poa = 'output/070_bayescan/compared_ruakura_poa_indivs.txt',
+        indivs_lincoln = 'output/070_bayescan/compared_lincoln_indivs.txt',
+        indivs_invermay = 'output/070_bayescan/compared_invermay_indivs.txt'
+    singularity:
+        r_container
+    log:
+        'output/logs/070_bayescan/make_indiv_lists.log'
+    script:
+        'src/define_vcf_individuals.R'
+
 
 # Make popmap files specifying which individuals to use for each bayescan run
 rule make_bayescan_popmaps:
@@ -102,6 +187,7 @@ rule make_bayescan_popmaps:
         popmap_4pops = 'output/070_bayescan/popmap_compared_4pops.txt',
         popmap_para = 'output/070_bayescan/popmap_compared_para.txt',
         popmap_2pops = 'output/070_bayescan/popmap_compared_2pops.txt',
+        popmap_island = 'output/070_bayescan/popmap_compared_island.txt',
         popmap_ruakura = 'output/070_bayescan/popmap_compared_ruakura.txt',
         popmap_ruakura_poa = 'output/070_bayescan/popmap_compared_ruakura_poa.txt',
         popmap_lincoln = 'output/070_bayescan/popmap_compared_lincoln.txt',
@@ -111,22 +197,10 @@ rule make_bayescan_popmaps:
     threads:
         25
     log:
-        'output/logs/070_bayescan/make_bayescan_popmaps.log'
+        'output/logs/070_bayescan/make_bayescan_popmaps.log' 
+        # The more informative logs actually get output automatically as Verif.txt files
     script:
         'src/make_bayescan_popmaps.R'
-
-# I think this was for sfs calcs that I'm not using anymore. Commented out for now.
-# rule convert_gds_again:
-#     input:
-#         'output/060_pop_genet/populations.snps.vcf'
-#     output:
-#         'output/060_pop_genet/filtered_snps.gds'
-#     threads:
-#         25
-#     log:
-#         'output/logs/060_pop_genet/filtered_gds_convert.log'
-#     script:
-#         'src/convert_gds.R'
 
 
 # Run populations again on filtered data to get population summary statistics
@@ -175,7 +249,26 @@ rule make_whitelist_popmap:
     script:
         'src/make_whitelist_popmap.R'
 
-# Used for DAPC here
+# Do DAPC on the SNP data, with various subsets of the data and groupings
+rule run_DAPC:
+    input:
+        plink_file = 'output/060_pop_genet/plink.raw',
+        para_file =  'output/010_config/tidy_sample_info.tsv'
+    output:
+        pca_results = 'output/071_DAPC/pca_results.tsv',
+        dapc_para_results = 'output/071_DAPC/dapc_para_results.tsv',
+        dapc_pop_results = 'output/071_DAPC/dapc_pop_results.tsv',
+        dapc_invermay_results = 'output/071_DAPC/dapc_invermay_results.tsv',
+        dapc_ruakura_results = 'output/071_DAPC/dapc_ruakura_results.tsv',
+        dapc_rpoa_results = 'output/071_DAPC/dapc_rpoa_results.tsv',
+        dapc_lincoln_results = 'output/071_DAPC/dapc_lincoln_results.tsv'
+    singularity:
+        r_container
+    log:
+        'output/logs/071_DAPC/run_DAPC.log'
+    script:
+        'src/DAPC.R'
+
 
 # Convert ped to plink format, specify that chromosomes are unknown
 rule convert_to_plinkraw:
