@@ -36,7 +36,7 @@ sel <- read.table('output/070_bayescan/compared_para.sel')
 sel <- read.table('output/070_bayescan/compared_2pops.sel')
 sel <- read.table('output/070_bayescan/compared_ruakura.sel') # This one did not pass the Geweke diagnostic test
 sel <- read.table('output/070_bayescan/compared_invermay.sel')
-# sel <- read.table('output/070_bayescan/compared_2pops.sel')
+sel <- read.table('output/070_bayescan/compared_island.sel')
 
 fst_tbl <- read.table('output/070_bayescan/compared_4pops_fst.txt')
 fst_tbl_l <- read.table('output/070_bayescan/compared_lincoln_fst.txt')
@@ -45,7 +45,7 @@ fst_tbl <- read.table('output/070_bayescan/compared_para_fst.txt')
 fst_tbl <- read.table('output/070_bayescan/compared_2pops_fst.txt')
 fst_tbl_r <- read.table('output/070_bayescan/compared_ruakura_fst.txt')
 fst_tbl_i <- read.table('output/070_bayescan/compared_invermay_fst.txt')
-# sel <- read.table('output/070_bayescan/compared_2pops_fst.txt')
+fst_tbl <- read.table('output/070_bayescan/compared_island_fst.txt')
 
 
 # 
@@ -87,10 +87,14 @@ fst_tbl <- fst_tbl %>%
   mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig'))
 
 ggplot(fst_tbl, aes(x = index, y = alpha, colour = sig)) +
-  geom_point(alpha = 0.3) +
+  geom_point(alpha = 0.6) +
+  labs(x = "SNP number", y = "Locus-specific component of variation (alpha)") +
   theme(axis.text.x = element_blank(), 
         axis.ticks.x = element_blank(), 
-        legend.position = "none") 
+        legend.position = "none",
+        axis.line.x.top = element_line(), 
+        axis.line.y.right = element_line(),
+        axis.text.y = element_text(size = 14)) 
   
 
 ggplot(fst_tbl, aes(x = qval, y = alpha, colour = sig)) +
@@ -153,11 +157,62 @@ invermay_points <- fst_tbl_i %>%
 combined_results <- bind_rows(lincoln_points, rpoa_points, ruakura_points, invermay_points)
 
 ggplot(combined_results, aes(x = index, y = alpha, colour = sig)) +
-  geom_point(alpha = 0.3) +
+  geom_point(alpha = 0.7) +
   facet_grid(~location) +
   theme(axis.text.x = element_blank(), 
         axis.ticks.x = element_blank(), 
         legend.position = "none") +
-  scale_y_continuous(labels =function(n){format(n, scientific = FALSE)})
+  scale_y_continuous(labels =function(n){format(n, scientific = FALSE)}) +
+  labs(y = "Locus specific component of variation (alpha)", x = "SNP number")
 
 
+############################# Para and island next to each other for poster ####################################
+
+fst_tbl_para_ <- fst_tbl_para %>% 
+  mutate(index = rownames(fst_tbl_para)) %>% 
+  mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig')) %>% 
+  mutate(thing = "a_para")
+
+
+fst_tbl_island <- fst_tbl_is %>% 
+  mutate(index = rownames(fst_tbl_is)) %>% 
+  mutate(sig = if_else(qval <= 0.05, 'sig', 'non-sig')) %>% 
+  mutate(thing = "b_island")
+
+
+two_combined <-  bind_rows(fst_tbl_para_, fst_tbl_island)
+
+
+ggplot(two_combined, aes(x = index, y = alpha, colour = sig)) +
+  geom_point(alpha = 0.7) +
+  facet_grid(~thing) +
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        legend.position = "none",
+        axis.text = element_text(size = 15), 
+        axis.title.y = element_text(size = 18,  
+                                    margin = margin(r = 10)), 
+        axis.title.x = element_text(size = 18) ) +
+  labs(x = "SNP index", y = "Locus-specific component of variation (alpha)")
+
+ggplot(fst_tbl_para_, aes(x = index, y = alpha, colour = sig)) +
+  geom_point(alpha = 0.7) +
+  scale_y_continuous(limits = c(-0.1, 2.2))+
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        legend.position = "none",
+        axis.text = element_text(size = 15), 
+        axis.title.y = element_text(size = 18,  margin = margin(r = 10)), 
+        axis.title.x = element_text(size = 18, margin = margin(t = -30)) ) +
+  labs(x = "SNP index", y = "Locus-specific component of variation (alpha)")
+
+ggplot(fst_tbl_island, aes(x = index, y = alpha, colour = sig)) +
+  geom_point(alpha = 0.7) +
+  scale_y_continuous(limits = c(-0.1, 2.2))+
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), 
+        legend.position = "none",
+        axis.text = element_text(size = 15), 
+        axis.title.y = element_text(size = 18,  margin = margin(r = 10)), 
+        axis.title.x = element_text(size = 18, margin = margin(t = -30)) ) +
+  labs(x = "SNP index", y = "Locus-specific component of variation (alpha)")
