@@ -19,11 +19,12 @@ dapc_invermay_results <- snakemake@output[["dapc_invermay_results"]]
 dapc_ruakura_results <- snakemake@output[["dapc_ruakura_results"]]
 dapc_rpoa_results <- snakemake@output[["dapc_rpoa_results"]]
 dapc_lincoln_results <- snakemake@output[["dapc_lincoln_results"]]
+dapc_island_results <- snakemake@output[["dapc_island_results"]]
 log_file <- snakemake@log[[1]]
 
 # dev
-# plink_file <- 'output/060_pop_genet/plink.raw'
-# para_file <-  'output/010_config/tidy_sample_info.tsv'
+ # plink_file <- 'output/060_pop_genet/plink.raw'
+ # para_file <-  'output/010_config/tidy_sample_info.tsv'
 # 
 # pca_results <- 'output/071_DAPC/pca_results.tsv'
 # dapc_para_results <- 'output/071_DAPC/dapc_para_results.tsv'
@@ -32,6 +33,7 @@ log_file <- snakemake@log[[1]]
 # dapc_ruakura_results <- 'output/071_DAPC/dapc_ruakura_results.tsv'
 # dapc_rpoa_results <- 'output/071_DAPC/dapc_rpoa_results.tsv'
 # dapc_lincoln_results <- 'output/071_DAPC/dapc_lincoln_results.tsv'
+# dapc_island_results <- 'output/071_DAPC/dapc_island_results.tsv'
 
 ########
 # Main #
@@ -137,11 +139,6 @@ DAPC_para <- as_tibble(DAPC_scores_para) %>%
 write_delim(DAPC_para, dapc_para_results, delim = '\t')
 
 
-
-######### Extract SNPs driving LD 1. Only need to do if LD1 separates the groups #########
-# contrib <- loadingplot(dapc_opt_2$var.contr, axis=1,
-#                        lab.jitter=1, threshold = 0.005, xlab = "",
-#                        ylab = "", main = NULL)
 
 ########## DAPC between 4 pops #################
 
@@ -340,6 +337,56 @@ DAPC_lincoln <- as_tibble(DAPC_scores_l) %>%
 
 # Write out data to plot population DAPC without having to re-run DAPC
 write_delim(DAPC_lincoln, dapc_lincoln_results, delim = '\t')
+
+############ By Island ##############
+
+# Change pop slot to contain island info
+filtered_para <-  filtered_para %>% 
+  mutate(island = case_when(Location == "Invermay" | Location == "Lincoln" ~ "South",
+                                     Location == "Ruakura" ~ "North"))
+
+indiv_to_island <- filtered_para$island 
+names(indiv_to_island) <- filtered_para$Individual
+no_NA_island <- no_NA
+pop(no_NA_island) <- indiv_to_island[no_NA_island$ind.names]
+
+# # Run a DAPC
+dapc_unfit_is <- dapc(no_NA_island, n.pca = 50, n.da = 10)
+scatter(dapc_unfit_is)
+# 
+
+
+# # Optim a-score
+temp <- optim.a.score(dapc_unfit_is, n.pca = 1:50, smart = FALSE, n.sim = 50)
+temp$mean
+# 
+# # Cross-validation
+ mat_is <- tab(no_NA_island, NA.method="mean")
+ grp_is <- pop(no_NA_island)
+xval <- xvalDapc(mat_is, grp_is, n.pca.max = 50, training.set = 0.9,
+                 result = "groupMean", center = TRUE, scale = FALSE,
+                 n.pca = 1:50, n.rep = 50, xval.plot = TRUE)
+xval[2:6]
+
+# Re-run the DAPC with the optimal number of PCs (1)
+dapc_island <- dapc(no_NA_island, n.pca = 1, n.da = 10)
+
+# Format data to be able to plot it
+DAPC_scores_is <- as.data.frame(dapc_island$ind.coord)
+DAPC_scores_is ["Individual"] <- rownames(DAPC_scores_is)
+
+DAPC_island <- as_tibble(DAPC_scores_is) %>% 
+  left_join(filtered_para, by = "Individual") 
+
+# Write out data to plot population DAPC without having to re-run DAPC
+write_delim(DAPC_island, dapc_island_results , delim = '\t')
+
+
+## Calculate and plot SNP loadings for LD 1 ## 
+contrib <- loadingplot(dapc_island$var.contr, axis=1, xlab = "SNP number",
+                       ylab = "SNP Loading", lab.jitter=1, threshold = 0.0005, main = NULL)
+
+
 
 # Log session info
 sessionInfo()
