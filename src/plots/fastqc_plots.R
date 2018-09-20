@@ -58,23 +58,35 @@ I11_gc_file <- 'fastqc_examples/I11_fastqc/out04'
 ########
 
 # Extract data from the fastqc data files within all the zipped folders in the fastqc output directory and put it in a format that can be plotted
-before_plot <- extract_plot_data(before_data_dir)
-after_plot <- extract_plot_data(after_data_dir)
+before_plot <- extract_plot_data(before_data_dir) %>% 
+  mutate(step = "Before filtering")
+
+after_plot <- extract_plot_data(after_data_dir) %>% 
+  mutate(step = "After filtering")
+
+combined_fq_data <- rbind(before_plot, after_plot)
 
 
 # Plot adapter content by position
-ggplot(mapping = aes(x = as.numeric(position), y = as.numeric(value), group = L1)) +
+ggplot(data = combined_fq_data, 
+       mapping = aes(x = as.numeric(position), y = as.numeric(value), colour = step, group = interaction(L1, step))) +
   ylim(c(0,75)) +
-  geom_line(data = after_plot, colour = "black") +
-  geom_line(data = before_plot, colour = "#990000") +
+  geom_line() +
   labs(x = "Position along read", y = "Adapter content for all reads within individual (%)") +
-  theme_classic() 
+  theme_classic() +
+  theme(axis.title = element_text(size = 14), 
+        axis.title.y = element_text(margin = margin(r = 10)),
+        axis.text = element_text(size = 12),
+        legend.text=element_text(size=12)) +
+  scale_colour_manual(name = "", values = c("black","#990000"), guide = guide_legend(reverse=TRUE))
+
+
 
 # Read in an example file with an odd gc distribution
 gc_content <- read_delim(I11_gc_file, delim = '\t', skip = 2)
 
 # Parameters for the theoretical distribution. Currently just fudged, FIX THIS
-mean_value <-  60 #gc_content$`#GC Content`[max(gc_content$Count)]
+mean_value <-  46.8 #gc_content$`#GC Content`[max(gc_content$Count)]
 sd_value <- 12
 n_value <-  6000000
 
@@ -92,4 +104,7 @@ ggplot(gc_content, aes(x = `#GC Content`, y = Count)) +
              sd = sd_value, 
              n = n_value, 
              bw = 1), 
-    colour = "#990000")
+    colour = "#990000") +
+  theme(axis.title = element_text(size = 14), 
+             axis.title.y = element_text(margin = margin(r = 10)),
+             axis.text = element_text(size = 12))
