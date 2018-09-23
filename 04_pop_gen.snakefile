@@ -8,8 +8,8 @@
 bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d571b5e888e98e5b79f902c30388'
 fastsimcoal_container = 'shub://MarissaLL/singularity-containers:fastsimcoal_2.6@37ca431784b209574f517ee09263fca2'
 pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5@e546f843e2b84401284745a766546c90'
+plink_container = 'shub://TomHarrop/singularity-containers:plink_1.90beta5@43e5ecf38b3490b64a5d7e1f5ead046d'
 r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1078bd77b7e550e72486881defed9bad'
-# r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@230db32b3097775cd51432092f9cbcb1'
 
@@ -38,12 +38,44 @@ rule target:
         # 'output/060_pop_genet/populations.snps.vcf',
         # 'output/070_bayescan/popmap_compared_invermay.txt',
         expand('output/070_bayescan/{bayescan_run}.sel',
-              bayescan_run = bayescan_runs)
+              bayescan_run = bayescan_runs),
+        'output/070_bayescan/compared_island_prhi.sel'
         # 'output/071_DAPC/dapc_para_results.tsv',
         # expand('output/070_bayescan/{bayescan_subset}.geste-outputformat',
         #         bayescan_subset = bayescan_subsets),
         # expand('output/070_bayescan/{bayescan_full}.geste-outputformat',
         #         bayescan_full = bayescan_full)
+
+# Run bayescan with higher prior odds to detect outlying SNPs
+rule bayescan_prhi:
+    input:
+        genotypes = 'output/070_bayescan/compared_island.geste-outputformat'
+    output:
+        'output/070_bayescan/compared_island_prhi.sel',
+        'output/070_bayescan/compared_island_prhi.txt'
+    params:
+        outdir = 'output/070_bayescan',
+        outname = 'compared_island_prhi'
+    singularity:
+        bayescan_container
+    threads:
+        50
+    log:
+        'output/logs/070_bayescan/compared_island_prhi.log'
+    shell:
+        'bayescan_2.1 '
+        '{input.genotypes} '
+        '-od {params.outdir} '
+        '-o {params.outname} '
+        '-pilot 5000 '
+        '-nbp 20 '
+        '-burn 15000 '
+        '-n 30000 '
+        '-thin 10 '
+        '-pr_odds 10000 '
+        '-out_pilot '
+        '-out_freq '
+        '&> {log}'
 
 
 
@@ -79,7 +111,7 @@ rule bayescan:
         '&> {log}'
 
 
-#Convert SNP data in VCF format into geste format for bayescan. 
+#Convert SNP data in VCF format into geste format for bayescan. For the full vcf
 # Note that the location of the popmap is actually specified within the spid file
 # It is only specified here to link the dependencies of the rules
 # rule convert_full_pop_bayescan_inputs: 
@@ -108,6 +140,10 @@ rule bayescan:
 #         '-spid {input.spid} '
 #         '&> {log}'
 
+
+## Convert data to geste format for bayescan, for the subset vcfs
+## Note that the location of the popmap is actually specified within the spid file
+## It is only specified here to link the dependencies of the rules
 # rule convert_subset_bayescan_inputs:
 #     input:
 #         vcf = 'output/070_bayescan/{bayescan_subset}.recode.vcf',
@@ -134,7 +170,7 @@ rule bayescan:
 #         '-spid {input.spid} '
 #         '&> {log}'
 
-
+# Subset vcfs to only include individuals needed in each bayescan run
 rule subset_vcfs:
     input:
         individual_list = 'output/070_bayescan/{bayescan_subset}_indivs.txt',
@@ -157,6 +193,7 @@ rule subset_vcfs:
         '--recode '
         '&> {log}'
 
+#  Make lists of individuals to keep when subsetting vcfs
 rule make_indiv_lists:
     input:
         popmap_2pops = 'output/070_bayescan/popmap_compared_2pops.txt',
@@ -244,6 +281,8 @@ rule make_whitelist_popmap:
     output:
         whitelist = 'output/060_pop_genet/whitelist.txt',
         popmap = 'output/060_pop_genet/r0.8_filtered_popmap.txt'
+    singularity:
+        r_container
     log:
         'output/logs/060_pop_genet/make_whitelist_popmap.log'
     script:
@@ -270,7 +309,7 @@ rule run_DAPC:
         'src/DAPC.R'
 
 
-# Convert ped to plink format, specify that chromosomes are unknown
+# Convert ped to plink format, specify that chromosomes are unknown so that it behaves
 rule convert_to_plinkraw:
     input:
         ped = 'output/060_pop_genet/snps.ped',
@@ -279,6 +318,8 @@ rule convert_to_plinkraw:
         'output/060_pop_genet/plink.raw'
     params:
         workdir = 'output/060_pop_genet'
+    singularity:
+        plink_container
     threads:
         25
     log:
@@ -303,6 +344,8 @@ rule filter_snps_indivs:
         missing_rate = 0.2,
         sample_missing_quantile = 0.8,
         ped_file = 'output/060_pop_genet/snps'
+    singularity:
+        r_container
     threads:
         25
     log:
@@ -316,6 +359,8 @@ rule convert_to_gds:
         stacks('output/050_stacks_pops/r0/populations.snps.vcf')
     output:
         'output/060_pop_genet/snps.gds'
+    singularity:
+        r_container
     threads:
         25
     log:
