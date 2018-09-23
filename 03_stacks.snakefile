@@ -188,6 +188,7 @@ rule combine_coverage:
     script:
         'src/combine_coverage.R'
 
+# Calculate the number of reads and coverage within individuals
 rule calculate_coverage:
     input:
         tags = 'output/040_stacks/{individual}.tags.tsv.gz'
@@ -200,6 +201,7 @@ rule calculate_coverage:
     script:
         'src/calculate_coverage.R'
 
+# Form loci from reads within individuals
 rule ustacks:
     input:
         fq = process_reads('output/021_filtered/{individual}.fq.gz'),
