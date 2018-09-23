@@ -137,7 +137,7 @@ plot_data$Parasitism <- indiv_status[plot_data$individual]
 
 # Shows how many parasitized/unparasitized individuals there are in each population in unfiltered data
 plot_data %>% 
-  group_by(population, para) %>% 
+  group_by(population, Parasitism) %>% 
   summarise(n = length(unique(individual)))
 
 # Returns the number of individuals in the dataset prior to filtering

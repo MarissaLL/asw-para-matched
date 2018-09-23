@@ -82,6 +82,7 @@ ggplot(data = combined_fq_data,
 
 
 
+
 # Read in an example file with an odd gc distribution
 gc_content <- read_delim(I11_gc_file, delim = '\t', skip = 2)
 
