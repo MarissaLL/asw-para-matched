@@ -9,7 +9,7 @@ bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d
 fastsimcoal_container = 'shub://MarissaLL/singularity-containers:fastsimcoal_2.6@37ca431784b209574f517ee09263fca2'
 pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5@e546f843e2b84401284745a766546c90'
 plink_container = 'shub://TomHarrop/singularity-containers:plink_1.90beta5@43e5ecf38b3490b64a5d7e1f5ead046d'
-r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1078bd77b7e550e72486881defed9bad'
+r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1f713cf93d67765d2d37eb87339495de5'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@230db32b3097775cd51432092f9cbcb1'
 
@@ -51,8 +51,7 @@ rule bayescan_prhi:
     input:
         genotypes = 'output/070_bayescan/compared_island.geste-outputformat'
     output:
-        'output/070_bayescan/compared_island_prhi.sel',
-        'output/070_bayescan/compared_island_prhi.txt'
+        'output/070_bayescan/compared_island_prhi.sel'
     params:
         outdir = 'output/070_bayescan',
         outname = 'compared_island_prhi'

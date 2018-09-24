@@ -30,7 +30,7 @@ def lookup_indiv(pickle_file, individual):
 ###########
 
 counts_file = 'output/010_config/filtering_stats.csv'
-r_container = 'shub://TomHarrop/singularity-containers:r_3.5.0@490e801d406497fa461377d17b3b339b'
+r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1f713cf93d67765d2d37eb87339495de5'
 stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 

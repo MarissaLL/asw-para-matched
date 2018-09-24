@@ -66,6 +66,11 @@ def read_keydata_and_write_config(key_file, outdir):
 data_dir = 'data/asw_para_matched'
 key_file = 'data/asw_para_matched/combined_key_data.csv'
 
+bbmap_container = 'shub://MarissaLL/singularity-containers:bbmap_37.92@fa973c37883055c243c5e37f82f68f4d'
+fastqc_container = 'shub://MarissaLL/singularity-containers:fastqc_0.11.5@2fa47d3690d60343361e575ae6c54a33'
+r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1f713cf93d67765d2d37eb87339495de5'
+stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
+
 #########
 # SETUP #
 #########
@@ -90,6 +95,8 @@ rule target:
                individual=all_indivs),
         expand('output/022_fastqc/after_filter/{individual}_fastqc.zip',
                individual=all_indivs),
+        expand('output/021_filtered/{individual}_readlength_hist.txt',
+              individual=all_indivs)
     
         
 
@@ -118,6 +125,8 @@ rule fastqc_after_filter:
                individual=all_indivs)
     params:
         outdir='output/022_fastqc/after_filter'
+    singularity:
+        fastqc_container
     threads:
         10
     log:
@@ -137,11 +146,14 @@ rule combine_stats:
             individual=all_indivs)
     output:
         stats_file = 'output/010_config/filtering_stats.csv'
+    singularity:
+        r_container
     log:
         'output/logs/021_filtered/combined_stats.log'
     script:
         'src/combine_stats.R'
 
+# Remove any sequence matching that of the adapter, and truncate reads to 80 bp 
 rule filter_adapters:
     input:
         FQ = 'output/020_demux/{individual}.fq.gz'
@@ -153,6 +165,8 @@ rule filter_adapters:
         gc_hist = 'output/021_filtered/gc_hist/{individual}.txt'
     params:
         adapters = 'data/bbduk_adapters.fa'
+    singularity:
+        bbmap_container
     threads:
         1
     log:
@@ -187,6 +201,38 @@ rule filter_adapters:
         'ziplevel=9 '
         '&> {log.truncation_log}'
 
+# Calculate how much of the read is ASW sequence
+rule readlength:
+    input:
+        FQ = 'output/020_demux/{individual}.fq.gz'
+    output:
+        lhist = 'output/021_filtered/{individual}_readlength_hist.txt'
+    params:
+        adapters = 'data/bbduk_adapters.fa'
+    singularity:
+        bbmap_container
+    threads:
+        1
+    log:
+        match_log = 'output/logs/021_filtered/{individual}_match.log',
+        lhist_log = 'output/logs/021_filtered/{individual}_readlength.log'
+    shell:
+        'bbduk.sh '
+        'threads={threads} '
+        'in={input.FQ} '
+        'interleaved=f '
+        'out=stdout.fq '
+        'ref={params.adapters} '
+        'ktrim=r k=23 mink=11 hdist=1 '
+        'findbestmatch=t '
+        '&> {log.match_log} '
+        ' | '
+        'reformat.sh '
+        'in=stdin.fq '
+        'int=f '
+        'out=stdout.fq '
+        'lhist={output.lhist} '
+        '2> {log.lhist_log}'
 
 rule fastqc_before_filter:
     input:
@@ -197,6 +243,8 @@ rule fastqc_before_filter:
                individual=all_indivs)
     params:
         outdir='output/022_fastqc/before_filter'
+    singularity:
+        fastqc_container
     threads:
         10
     log:
@@ -218,6 +266,8 @@ for fc in all_fcs:
                    individual=fc_to_indiv[fc])
         params:
             outdir = 'output/020_demux'
+        singularity:
+            stacks2b_container
         threads:
             1
         log:
@@ -255,6 +305,8 @@ rule tidy_sample_info:
         'data/sample_catalog.csv'
     output:
         'output/010_config/tidy_sample_info.tsv'
+    singularity:
+        r_container
     log:
         'output/logs/010_config/tidy_sample_info.log'
     script:
