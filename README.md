@@ -13,3 +13,5 @@ The singularity containers used are hosted on singularity hub at:
 https://www.singularity-hub.org/collections/1290
 and
 https://singularity-hub.org/collections/996
+
+Plotting scripts are in src/plots.
