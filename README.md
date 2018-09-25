@@ -1,4 +1,4 @@
-# Argentine stem weevil GBS
+## Argentine stem weevil GBS
 
 An honours project analysing genotyping by sequencing data from the Argentine stem weevil (*Listronotus bonariensis*).
 
