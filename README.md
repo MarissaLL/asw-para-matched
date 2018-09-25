@@ -14,4 +14,4 @@ https://www.singularity-hub.org/collections/1290
 and
 https://singularity-hub.org/collections/996
 
-Plotting scripts are in src/plots.
+Plotting scripts are in src/plots and are not run automatically.
