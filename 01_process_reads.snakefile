@@ -95,7 +95,7 @@ rule target:
                individual=all_indivs),
         expand('output/022_fastqc/after_filter/{individual}_fastqc.zip',
                individual=all_indivs),
-        expand('output/021_filtered/{individual}_readlength_hist.txt',
+        expand('output/021_filtered/readlength_hist/{individual}_readlength_hist.txt',
               individual=all_indivs)
     
         
@@ -206,7 +206,7 @@ rule readlength:
     input:
         FQ = 'output/020_demux/{individual}.fq.gz'
     output:
-        lhist = 'output/021_filtered/{individual}_readlength_hist.txt'
+        lhist = 'output/021_filtered/readlength_hist/{individual}_readlength_hist.txt'
     params:
         adapters = 'data/bbduk_adapters.fa'
     singularity:
@@ -225,7 +225,7 @@ rule readlength:
         'ref={params.adapters} '
         'ktrim=r k=23 mink=11 hdist=1 '
         'findbestmatch=t '
-        '&> {log.match_log} '
+        '2> {log.match_log}'
         ' | '
         'reformat.sh '
         'in=stdin.fq '
