@@ -1,14 +1,35 @@
+#!/usr/bin/env Rscript
+
 library(scales)
 library(tidyverse)
 
+#############
+# FUNCTIONS #
+#############
+
 label_func <- function(x) {gsub("[[:alpha:]]", "", x)}
 
-popstats_combined_Mm = read.csv("output_20180614/030_optim/stats_Mm/popstats_combined.csv")
-samplestats_combined_Mm = read.csv("output_20180614/030_optim/stats_Mm/samplestats_combined.csv")
+###########
+# GLOBALS #
+###########
 
-popstats_combined_n = read.csv("output_20180614/030_optim/stats_n/popstats_combined.csv")
-samplestats_combined_n = read.csv("output_20180614/030_optim/stats_n/samplestats_combined.csv")
+Mm_pop_csv <- "output/030_optim/stats_Mm/popstats_combined.csv"
+Mm_sample_csv <- "output/030_optim/stats_Mm/samplestats_combined.csv"
+  
+n_pop_csv <- "output/030_optim/stats_n/popstats_combined.csv"
+n_sample_csv <- "output/030_optim/stats_n/samplestats_combined.csv"
 
+
+########
+# MAIN #
+########
+
+# Read in data
+popstats_combined_Mm = read.csv(Mm_pop_csv)
+samplestats_combined_Mm = read.csv(Mm_sample_csv)
+
+popstats_combined_n = read.csv(n_pop_csv)
+samplestats_combined_n = read.csv(n_sample_csv)
 
 # Change format of the data for ggplot
 samples_Mm_gathered <-  samplestats_combined_Mm %>% 
