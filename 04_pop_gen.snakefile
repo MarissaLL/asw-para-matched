@@ -46,7 +46,7 @@ rule target:
         # expand('output/070_bayescan/{bayescan_full}.geste-outputformat',
         #         bayescan_full = bayescan_full)
 
-# Run bayescan with higher prior odds to detect outlying SNPs
+# Run bayescan with higher prior odds to see the effect
 rule bayescan_prhi:
     input:
         genotypes = 'output/070_bayescan/compared_island.geste-outputformat'

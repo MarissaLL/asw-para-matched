@@ -37,6 +37,7 @@ sel <- read.table('output/070_bayescan/compared_2pops.sel')
 sel <- read.table('output/070_bayescan/compared_ruakura.sel') # This one did not pass the Geweke diagnostic test
 sel <- read.table('output/070_bayescan/compared_invermay.sel')
 sel <- read.table('output/070_bayescan/compared_island.sel')
+sel <-  read.table('output/070_bayescan/compared_island_prhi.sel')
 
 fst_tbl <- read.table('output/070_bayescan/compared_4pops_fst.txt')
 fst_tbl_l <- read.table('output/070_bayescan/compared_lincoln_fst.txt')
@@ -46,6 +47,8 @@ fst_tbl <- read.table('output/070_bayescan/compared_2pops_fst.txt')
 fst_tbl_r <- read.table('output/070_bayescan/compared_ruakura_fst.txt')
 fst_tbl_i <- read.table('output/070_bayescan/compared_invermay_fst.txt')
 fst_tbl_island <- read.table('output/070_bayescan/compared_island_fst.txt')
+fst_is_prhi <- read.table('output/070_bayescan/compared_island_prhi_fst.txt')
+
 
 
 # 
@@ -207,8 +210,8 @@ ggplot(fst_tbl_para_, aes(x = index, y = alpha, colour = sig)) +
         axis.title.x = element_text(size = 16, margin = margin(t = -20)) ) +
   labs(x = "SNP number", y = "Locus-specific component of variation (alpha)")
 
-ggplot(fst_tbl_island, aes(x = index, y = alpha, colour = sig)) +
-  geom_point(alpha = 0.7,  size = 3) +
+ggplot(fst_tbl, aes(x = index, y = alpha, colour = sig)) +
+  geom_point(alpha = 0.7,  size = 1.5) +
   scale_y_continuous(limits = c(-0.1, 2.2))+
   theme(axis.text.x = element_blank(), 
         axis.ticks.x = element_blank(), 
