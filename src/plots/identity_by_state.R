@@ -57,7 +57,9 @@ for_para <- IBS_plot %>%
 # Define colours for plot components
 hs <- RColorBrewer::brewer.pal(6, "YlOrRd")
 pop_col <- RColorBrewer::brewer.pal(4, "PiYG")
+names(pop_col) <- c("I", "L", "R", "Rpoa")
 para_col <- c("#99c2ff", "#003cb3")
+names(para_col) <-  c("non-parasitized", "parasitized")
 # pop_col <-  c("#D01C8B", "#F1B6DA", "#B8E186")
 # pop_col <- c("salmon1", "salmon3", "#B8E186", "#4DAC26")
 
@@ -107,7 +109,7 @@ f <- ggplot(IBS_plot, aes(x = Var1, y = Var2, fill = value)) +
 
 g <- ggplot(for_pop, aes(x = Var1, y = Var2, fill = pop)) + 
   geom_raster() +
-  scale_fill_manual(values = pop_col, labels = c("Invermay", "Lincoln", "Ruakura", "Ruakura (Poa) ")) +
+  scale_fill_manual(values = pop_col, labels = c("Invermay", "Lincoln", "Ruakura", "Ruakura (Poa)  ")) +
   theme_void() +
   theme(legend.position = "right",
         legend.text = element_text(size = 12), 
@@ -117,11 +119,11 @@ g <- ggplot(for_pop, aes(x = Var1, y = Var2, fill = pop)) +
 h <- ggplot(for_para, aes(x = Var1, y = Var2, fill = para)) + 
   geom_raster() +
   theme_void() +
-  scale_fill_manual(values = para_col) +
+  scale_fill_manual(values = para_col, labels = c("non-parasitised", "parasitised")) +
   theme(legend.position = "right",
         legend.text = element_text(size = 12), 
         legend.title = element_text(size = 15)) +
-  labs(fill = "Parasitism status")
+  labs(fill = "Parasitism")
 
 # Convert plot components into grobs, create additional blank grob
 panel_a <- ggplotGrob(a)

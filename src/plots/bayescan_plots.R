@@ -34,7 +34,7 @@ sel <- read.table('output/070_bayescan/compared_lincoln.sel')
 sel <- read.table('output/070_bayescan/compared_ruakura_poa.sel')
 sel <- read.table('output/070_bayescan/compared_para.sel')
 sel <- read.table('output/070_bayescan/compared_2pops.sel')
-sel <- read.table('output/070_bayescan/compared_ruakura.sel') # This one did not pass the Geweke diagnostic test
+sel <- read.table('output/070_bayescan/compared_ruakura.sel') 
 sel <- read.table('output/070_bayescan/compared_invermay.sel')
 sel <- read.table('output/070_bayescan/compared_island.sel')
 sel <-  read.table('output/070_bayescan/compared_island_prhi.sel')
@@ -198,10 +198,11 @@ ggplot(two_combined, aes(x = index, y = alpha, colour = sig)) +
   labs(x = "SNP index", y = "Locus-specific component of variation (alpha)")
 
 
-# Change point size to 1.5 for thesis. Export 550 height, 500 width
+# Change point size to 1.5 for thesis, 3 for poster. Export 550 height, 500 width
 ggplot(fst_tbl_para_, aes(x = index, y = alpha, colour = sig)) +
-  geom_point(alpha = 0.7, size = 3) +
+  geom_point(alpha = 0.7, size = 1.5) +
   scale_y_continuous(limits = c(-0.1, 2.2))+
+  scale_colour_manual(values = c("#377EB8", "#E41A1C"))+
   theme(axis.text.x = element_blank(), 
         axis.ticks.x = element_blank(), 
         legend.position = "none",
@@ -210,9 +211,10 @@ ggplot(fst_tbl_para_, aes(x = index, y = alpha, colour = sig)) +
         axis.title.x = element_text(size = 16, margin = margin(t = -20)) ) +
   labs(x = "SNP number", y = "Locus-specific component of variation (alpha)")
 
-ggplot(fst_tbl, aes(x = index, y = alpha, colour = sig)) +
+ggplot(fst_tbl_island, aes(x = index, y = alpha, colour = sig)) +
   geom_point(alpha = 0.7,  size = 1.5) +
   scale_y_continuous(limits = c(-0.1, 2.2))+
+  scale_colour_manual(values = c("#377EB8", "#E41A1C"))+
   theme(axis.text.x = element_blank(), 
         axis.ticks.x = element_blank(), 
         legend.position = "none",

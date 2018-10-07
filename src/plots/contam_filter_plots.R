@@ -27,9 +27,6 @@ gc_content_dir <- "output/021_filtered/gc_hist"
 filtered_popmap <-  "output/010_config/filtered_popmap.txt"
 
 
-
-#  RENAME POPULATIONS in GGRIDGES.
-
 ########################## Reads and coverage ############################
 cov_stuff <- read_csv(coverage_file) %>% 
   mutate(pop = str_replace_all(individual, "[[:digit:]]", ""))
@@ -54,8 +51,8 @@ contam_ord <- contaminants[order(contaminants$pop, contaminants$discard),]
 contam_ord$sorted <- row.names(contam_ord)
 
 # Assign colours to the different populations
-pop_colours <- RColorBrewer::brewer.pal(4, "Spectral")
-pop_colours <- c("pink", "pink3", "#B8E186", "#4DAC26")
+pop_colours <- RColorBrewer::brewer.pal(4, "PiYG")
+#pop_colours <- c("pink", "pink3", "#B8E186", "#4DAC26")
 names(pop_colours) <- c("I", "L", "R", "Rpoa")
 
 # Plot 
@@ -79,6 +76,36 @@ ggplot(data = contam_ord, mapping = aes(x = reorder(individual,
   labs(x = "Sample", 
        y = 'Percentage of reads discarded due to contaminants', 
        fill = "Population")
+
+################# Number of reads before removing contamination ####################
+
+# Order bars by population and then by total number of reads
+contam_ord_tot <- contaminants[order(contaminants$pop, contaminants$total),] 
+contam_ord_tot$sorted <- row.names(contam_ord_tot)
+
+
+# Plot 
+ggplot(data = contam_ord_tot, mapping = aes(x = reorder(individual, 
+                                                    as.numeric(sorted)), 
+                                        y = total, 
+                                        fill = pop)) +
+  geom_bar(stat = 'identity') +
+  scale_y_continuous(labels = comma,
+                     expand = c(0,0)) +
+  scale_fill_manual(values = pop_colours, 
+                    labels = c("Invermay", "Lincoln", "Ruakura", "Ruakura (Poa)")) +
+  theme_classic()+ 
+  theme(axis.ticks.x.bottom = element_blank(), 
+        axis.text.x.bottom = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12), 
+        legend.title = element_text(size = 14)) +
+  labs(x = "Sample", 
+       y = 'Number of reads in sample', 
+       fill = "Population")
+
+
 
 
 ###### Contamination stats

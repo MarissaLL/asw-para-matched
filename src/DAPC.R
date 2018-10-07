@@ -23,8 +23,8 @@ dapc_island_results <- snakemake@output[["dapc_island_results"]]
 log_file <- snakemake@log[[1]]
 
 # dev
- # plink_file <- 'output/060_pop_genet/plink.raw'
- # para_file <-  'output/010_config/tidy_sample_info.tsv'
+  plink_file <- 'output/060_pop_genet/plink.raw'
+  para_file <-  'output/010_config/tidy_sample_info.tsv'
 # 
 # pca_results <- 'output/071_DAPC/pca_results.tsv'
 # dapc_para_results <- 'output/071_DAPC/dapc_para_results.tsv'
@@ -91,6 +91,10 @@ PCA_scores <- as.data.frame(pca$scores)
 PCA_scores ["Individual"] <- rownames(PCA_scores)
 PCA_pop <- as_tibble(PCA_scores) 
 PCA_plot <-  left_join(PCA_pop, filtered_para, by = "Individual")
+
+# % explained by first 2 components
+pca$eig[1]/sum(pca$eig)
+pca$eig[2]/sum(pca$eig)
 
 # Write out PCA results
 write_delim(PCA_plot, pca_results, delim = '\t')
@@ -351,22 +355,22 @@ no_NA_island <- no_NA
 pop(no_NA_island) <- indiv_to_island[no_NA_island$ind.names]
 
 # # Run a DAPC
-dapc_unfit_is <- dapc(no_NA_island, n.pca = 50, n.da = 10)
-scatter(dapc_unfit_is)
+# dapc_unfit_is <- dapc(no_NA_island, n.pca = 50, n.da = 10)
+# scatter(dapc_unfit_is)
+# # 
 # 
-
-
-# # Optim a-score
-temp <- optim.a.score(dapc_unfit_is, n.pca = 1:50, smart = FALSE, n.sim = 50)
-temp$mean
 # 
-# # Cross-validation
- mat_is <- tab(no_NA_island, NA.method="mean")
- grp_is <- pop(no_NA_island)
-xval <- xvalDapc(mat_is, grp_is, n.pca.max = 50, training.set = 0.9,
-                 result = "groupMean", center = TRUE, scale = FALSE,
-                 n.pca = 1:50, n.rep = 50, xval.plot = TRUE)
-xval[2:6]
+# # # Optim a-score
+# temp <- optim.a.score(dapc_unfit_is, n.pca = 1:50, smart = FALSE, n.sim = 50)
+# temp$mean
+# # 
+# # # Cross-validation
+#  mat_is <- tab(no_NA_island, NA.method="mean")
+#  grp_is <- pop(no_NA_island)
+# xval <- xvalDapc(mat_is, grp_is, n.pca.max = 50, training.set = 0.9,
+#                  result = "groupMean", center = TRUE, scale = FALSE,
+#                  n.pca = 1:50, n.rep = 50, xval.plot = TRUE)
+# xval[2:6]
 
 # Re-run the DAPC with the optimal number of PCs (1)
 dapc_island <- dapc(no_NA_island, n.pca = 1, n.da = 10)
@@ -379,12 +383,16 @@ DAPC_island <- as_tibble(DAPC_scores_is) %>%
   left_join(filtered_para, by = "Individual") 
 
 # Write out data to plot population DAPC without having to re-run DAPC
-write_delim(DAPC_island, dapc_island_results , delim = '\t')
+write_delim(DAPC_island, dapc_island_results, delim = '\t')
 
 
 ## Calculate and plot SNP loadings for LD 1 ## 
 contrib <- loadingplot(dapc_island$var.contr, axis=1, xlab = "SNP number",
                        ylab = "SNP Loading", lab.jitter=1, threshold = 0.0005, main = NULL)
+
+# Write out list of SNP loadings over the threshold of 0.0005
+loadings <-  data.frame(contrib$var.names)
+write_delim(loadings, 'loadings.txt', delim = '\t')
 
 
 

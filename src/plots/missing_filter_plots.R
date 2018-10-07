@@ -166,26 +166,24 @@ ggplot(data = plot_data,
                        labels = c("Parasitised", 
                                   "Unparasitised"))
 
-# Missing rates close up. FIX UNEVEN CUTOFF LINES
-ggplot(data = subset(plot_data, SNP_missing_rate == "0.15" | 
-                       SNP_missing_rate == "0.2" |
-                       SNP_missing_rate == "0.25"), 
-       mapping = aes(x = SNP_missing_rate, 
+# Sample missing rate at SNP_missing_rate == "0.2 
+ggplot(data = subset(plot_data, SNP_missing_rate == "0.2"), 
+       mapping = aes(x = population, 
                      y = sample_missing_rate,
                      colour = population)) +
   geom_boxplot(outlier.size = -1, 
                position = position_dodge(width = 0.9)) +
   geom_point(aes(shape = Parasitism,
                  group = population),
-             position = position_jitterdodge(jitter.width = 0.15, 
+             position = position_jitterdodge(jitter.width = 0.45, 
                                              dodge.width = 0.9),
-             alpha = 0.4,
+             alpha = 0.5,
              size = 2) +
   geom_errorbar(width = 0.95, 
                 aes(ymax = q80, 
                     ymin = q80), 
                 colour = "black") +
-  labs(x = "Allowed SNP missing rate", 
+  labs(x = "Population", 
        y = "Sample missing rate") +
   theme_classic() +
   scale_color_discrete(name = "Population") +
