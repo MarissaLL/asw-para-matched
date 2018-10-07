@@ -35,46 +35,42 @@ subworkflow stacks:
 
 rule target:
     input:
-        # 'output/060_pop_genet/populations.snps.vcf',
-        # 'output/070_bayescan/popmap_compared_invermay.txt',
         expand('output/070_bayescan/{bayescan_run}.sel',
               bayescan_run = bayescan_runs),
-        'output/070_bayescan/compared_island_prhi.sel'
-        # 'output/071_DAPC/dapc_para_results.tsv',
-        # expand('output/070_bayescan/{bayescan_subset}.geste-outputformat',
-        #         bayescan_subset = bayescan_subsets),
-        # expand('output/070_bayescan/{bayescan_full}.geste-outputformat',
-        #         bayescan_full = bayescan_full)
+        'output/071_DAPC/dapc_para_results.tsv'
+        #'output/070_bayescan/compared_island_prhi.sel'
+       
+      
 
-# Run bayescan with higher prior odds to see the effect
-rule bayescan_prhi:
-    input:
-        genotypes = 'output/070_bayescan/compared_island.geste-outputformat'
-    output:
-        'output/070_bayescan/compared_island_prhi.sel'
-    params:
-        outdir = 'output/070_bayescan',
-        outname = 'compared_island_prhi'
-    singularity:
-        bayescan_container
-    threads:
-        50
-    log:
-        'output/logs/070_bayescan/compared_island_prhi.log'
-    shell:
-        'bayescan_2.1 '
-        '{input.genotypes} '
-        '-od {params.outdir} '
-        '-o {params.outname} '
-        '-pilot 5000 '
-        '-nbp 20 '
-        '-burn 15000 '
-        '-n 30000 '
-        '-thin 10 '
-        '-pr_odds 10000 '
-        '-out_pilot '
-        '-out_freq '
-        '&> {log}'
+# Run bayescan with higher prior odds to see the effect on the results
+# rule bayescan_prhi:
+#     input:
+#         genotypes = 'output/070_bayescan/compared_island.geste-outputformat'
+#     output:
+#         'output/070_bayescan/compared_island_prhi.sel'
+#     params:
+#         outdir = 'output/070_bayescan',
+#         outname = 'compared_island_prhi'
+#     singularity:
+#         bayescan_container
+#     threads:
+#         50
+#     log:
+#         'output/logs/070_bayescan/compared_island_prhi.log'
+#     shell:
+#         'bayescan_2.1 '
+#         '{input.genotypes} '
+#         '-od {params.outdir} '
+#         '-o {params.outname} '
+#         '-pilot 5000 '
+#         '-nbp 20 '
+#         '-burn 15000 '
+#         '-n 30000 '
+#         '-thin 10 '
+#         '-pr_odds 10000 '
+#         '-out_pilot '
+#         '-out_freq '
+#         '&> {log}'
 
 
 

@@ -52,7 +52,7 @@ rule target:
     input:
         'output/050_stacks_pops/r0/populations.snps.vcf'
 
-
+# Create VCF file with called polymorphic loci 
 rule populations:
     input:
         'output/040_stacks/catalog.fa.gz',
@@ -125,6 +125,7 @@ rule tsv2bam:
         '-t {threads} '
         '&> {log}'
 
+# Match individual loci back to catalog
 rule sstacks:
     input:
         catalog = 'output/040_stacks/catalog.tags.tsv.gz',
@@ -147,6 +148,7 @@ rule sstacks:
         '-p {threads} '
         '&> {log}'
 
+# Create a population-wide catalog of loci
 rule cstacks:
     input:
         expand('output/040_stacks/{individual}.alleles.tsv.gz',
@@ -173,6 +175,7 @@ rule cstacks:
         '-n {params.n} '
         '&> {log}'
 
+# Combine the coverage info for all individuals
 rule combine_coverage:
     input:
         coverage_file = expand('output/041_ustacks_coverage/{individual}.csv',

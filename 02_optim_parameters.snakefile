@@ -64,6 +64,7 @@ all_indivs = sorted(set(y for x in all_fcs for y in fc_to_indiv[x]))
 subworkflow process_reads:
     snakefile: 'process_reads.snakefile'
 
+# Compare optimisation results with results using default parameters
 rule compare_defaults:
     input:
         'output/030_optim/stats_n/samplestats_combined.csv',
@@ -93,7 +94,7 @@ rule compare_defaults:
         '{params.indir} '
         '&> {log} '
 
-
+# Optimise n
 rule optim_n:
     input:
         'output/030_optim/stats_Mm/samplestats_combined.csv',
@@ -122,7 +123,7 @@ rule optim_n:
         '{params.indir} '
         '&> {log} '
 
-
+# Optimise m and M
 rule optim_mM:
     input:
         'output/030_optim/filtering/replicate_1_popmap.txt',
@@ -149,7 +150,7 @@ rule optim_mM:
         '{params.indir} '
         '&> {log} '
 
-
+# Select individuals to use for parameter optimisation
 rule optim_setup:
     input:
         process_reads(expand('output/021_filtered/{individual}.fq.gz',

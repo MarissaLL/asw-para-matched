@@ -99,7 +99,7 @@ rule target:
               individual=all_indivs)
     
         
-
+# Generate the list of individuals to use
 rule generate_popmap:
     input:
         key_file = key_file
@@ -116,6 +116,7 @@ rule generate_popmap:
                       header=False,
                       index=False)
 
+# Run FastQC again after the filtering, to check improvement
 rule fastqc_after_filter:
     input:
         expand('output/021_filtered/{individual}.fq.gz',
@@ -234,6 +235,7 @@ rule readlength:
         'lhist={output.lhist} '
         '2> {log.lhist_log}'
 
+# Run FastQC on the demultiplexed data
 rule fastqc_before_filter:
     input:
         expand('output/020_demux/{individual}.fq.gz',
@@ -256,6 +258,7 @@ rule fastqc_before_filter:
         '{input} '
         '&> {log}'       
 
+# Demultiplex
 for fc in all_fcs:
     rule:
         input:
