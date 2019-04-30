@@ -35,6 +35,7 @@ subworkflow stacks:
 
 rule target:
     input:
+        'output/060_pop_genet/populations.loci.fa',
         expand('output/070_bayescan/{bayescan_run}.sel',
               bayescan_run = bayescan_runs),
         'output/071_DAPC/dapc_para_results.tsv'
@@ -235,7 +236,8 @@ rule make_bayescan_popmaps:
         'src/make_bayescan_popmaps.R'
 
 
-# Run populations again on filtered data to get population summary statistics
+# Run populations again on filtered data to get population summary statistics. 
+# Output a fasta file of the consensus sequences for the filtered loci
 rule populations_stats:
     input:
         stacks('output/040_stacks/catalog.fa.gz'),
@@ -244,7 +246,8 @@ rule populations_stats:
         whitelist = 'output/060_pop_genet/whitelist.txt'
     output:
         'output/060_pop_genet/populations.snps.vcf',
-        'output/060_pop_genet/populations.plink.ped'
+        'output/060_pop_genet/populations.plink.ped',
+        'output/060_pop_genet/populations.loci.fa'
     params:
         stacks_dir = 'output/040_stacks',
         outdir = 'output/060_pop_genet'
@@ -267,6 +270,7 @@ rule populations_stats:
         '--vcf '
         '--hwe '
         '--fstats '
+        '--fasta_loci '
         '&> {log}'
 
 # Write a new popmap and a new whitelist with only the samples and SNPs that passed all the filtering
