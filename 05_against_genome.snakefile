@@ -9,6 +9,7 @@ import multiprocessing
 bwa_container = 'shub://TomHarrop/singularity-containers:bwa_0.7.17'
 stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.3e'
 samtools_container = 'shub://TomHarrop/singularity-containers:samtools_1.9'
+bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
 
 
 #########
@@ -21,8 +22,11 @@ rule target:
         expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
                suffix=['amb', 'ann', 'bwt', 'pac', 'sa']),
         'output/080_against_genome/aln.sam',
-        'output/080_against_genome/aln_mapped_1.sam'
-
+        'output/080_against_genome/aln_mapped_1.sam',
+        # 'output/080_against_genome/ref/genome/1/summary.txt',
+        'output/080_against_genome/bbmapped.sam',
+        'output/080_against_genome/loci_noheader.fa',
+        'output/080_against_genome/bbmapped_full.sam'
 
 # Find loci that differed significantly between north and south island populations in the GBS SNPs 
 # Done without aligning anything to the genome or LD-pruning
@@ -105,6 +109,99 @@ rule filter_unaligned:
         '1> {output} '
         '2> {log}'
 
+# Map with BBmap (this step could possibly be combined with the indexing step)
+# The reference file listed is not used directly as input - just here to link dependencies
+# rule bbmap_mapping:
+#     input:
+#         loci = 'output/060_pop_genet/loci_noheader.fa'
+#     output:
+#         'output/080_against_genome/bbmapped.sam'
+#     params:
+#         ref_path = 'output/080_against_genome/'
+#     log:
+#         'output/logs/080_against_genome/bbmap_mapping.log'
+#     singularity:
+#         bbmap_container
+#     shell:
+#         'bbmap.sh '
+#         'in={input.loci} '
+#         'out={output} '
+#         'path={params.ref_path} '
+#         '&> {log}'
+
+# # Index with BBmap instead
+# rule bbmap_indexing:
+#     input:
+#         genome = 'data/flye_denovo_full.racon.fasta'
+#     output:
+#         'output/080_against_genome/ref/genome/1/summary.txt'
+#     params:
+#         ref_path = 'output/080_against_genome/'
+#     log:
+#         'output/logs/080_against_genome/bbmap_indexing.log'
+#     singularity:
+#         bbmap_container
+#     shell:
+#         'bbmap.sh '
+#         'ref={input.genome} '
+#         'path={params.ref_path} '
+#         '&> {log}'
+
+# Indexes the genome, then maps the provided loci to it. 
+# ref_path defines where the reference created by indexing goes
+rule bbmap_full:
+    input:
+        genome = 'data/flye_denovo_full.racon.fasta',
+        loci = 'output/040_stacks/catalog.fa.gz'
+    output:
+        'output/080_against_genome/bbmapped_full.sam'
+    params:
+        ref_path = 'output/080_against_genome/'
+    log:
+        'output/logs/080_against_genome/bbmap_index_map_full.log'
+    singularity:
+        bbmap_container
+    shell:
+        'bbmap.sh '
+        'in={input.loci} '
+        'out={output} '
+        'ref={input.genome} '
+        'path={params.ref_path} '
+        '&> {log}'
+
+
+# Indexes the genome, then maps the provided loci to it. 
+# ref_path defines where the reference created by indexing goes
+rule bbmap:
+    input:
+        genome = 'data/flye_denovo_full.racon.fasta',
+        loci = 'output/080_against_genome/loci_noheader.fa'
+    output:
+        'output/080_against_genome/bbmapped.sam'
+    params:
+        ref_path = 'output/080_against_genome/'
+    log:
+        'output/logs/080_against_genome/bbmap_index_map.log'
+    singularity:
+        bbmap_container
+    shell:
+        'bbmap.sh '
+        'in={input.loci} '
+        'out={output} '
+        'ref={input.genome} '
+        'path={params.ref_path} '
+        '&> {log}'
+
+# Remove the comment line from the catalog file so that bbmap can read it later
+rule remove_header:
+    input:
+        loci = 'output/060_pop_genet/populations.loci.fa'
+    output: 
+        loci_noheader = 'output/080_against_genome/loci_noheader.fa'
+    shell:
+        'cp {input.loci} {output} && '
+        'sed -i \'1d\' {output}'
+    
 
 # Map the full stacks catalog to the genome
 rule map_filtered_catalog:
