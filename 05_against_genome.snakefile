@@ -8,6 +8,7 @@ import multiprocessing
 
 bwa_container = 'shub://TomHarrop/singularity-containers:bwa_0.7.17'
 stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.3e'
+stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 samtools_container = 'shub://TomHarrop/singularity-containers:samtools_1.9'
 bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
 
@@ -18,6 +19,8 @@ bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
 
 rule target:
     input:
+        'output/080_against_genome/sig_regions.fa',
+
         # 'output/080_against_genome/locus_coordinates.tsv',
         expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
                suffix=['amb', 'ann', 'bwt', 'pac', 'sa']),
@@ -31,7 +34,44 @@ rule target:
         'output/080_against_genome/locus_coordinates.tsv',
         # 'output/080_against_genome/bbmapped_full_sorted.bam',
         # 'output/080_against_genome/bbmapped_full_sorted_sam3.sam',
-        'output/080_against_genome/bbmapped_checked_sorted.bam'
+        'output/080_against_genome/bbmapped_checked_sorted.bam',
+        'output/080_against_genome/populations.snps.vcf'
+        
+# grep -E -o ".{0,5}scaffold.{0,5}" populations.snps.vcf > scaffold_names.txt
+
+
+# 
+rule genome_population_stats:
+    input:
+        aln_catalog = 'output/080_against_genome/catalog.fa.gz',
+        calls = 'output/080_against_genome/catalog.calls',
+    output:
+        'output/080_against_genome/populations.snps.vcf'
+    params:
+        stacks_dir = 'output/080_against_genome',
+        outdir = 'output/080_against_genome'
+    singularity:
+        stacks2beta_container
+    threads:
+        50
+    log:
+        'output/logs/080_against_genome/genome_pop_stats.log'
+    shell:
+        'populations '
+        '-P {params.stacks_dir} '
+        '-O {params.outdir} '
+        '-t {threads} '
+        '-r 0 '
+        '--genepop '
+        '--plink '
+        '--vcf '
+        '--hwe '
+        '--fstats '
+        '--fasta_loci '
+        '&> {log}'
+
+
+
 
 
 
@@ -83,7 +123,7 @@ rule sam_to_bam:
         '2> {log}'
 
 
-# Sort the sam file by locus name
+# Sort the sam file by locus name. Can this output a bam?
 rule sort_sam:
     input:
         sam = 'output/080_against_genome/bbmapped_checked_14.sam',
@@ -101,34 +141,7 @@ rule sort_sam:
         '&> {log}'
 
 
-# # Indexes the genome, then maps the provided loci to it. 
-# # ref_path defines where the reference created by indexing goes
-# rule bbmap_full:
-#     input:
-#         genome = 'data/flye_denovo_full.racon.fasta',
-#         loci = 'output/040_stacks/catalog.fa.gz'
-#     output:
-#         'output/080_against_genome/bbmapped_full_sorted.bam'
-#     params:
-#         ref_path = 'output/080_against_genome/',
-#         out_prefix = 'output/080_against_genome/bbmapped_full.bam'
-#     log:
-#         map = 'output/logs/080_against_genome/bbmap_index_map_full.log',
-#         sort = 'output/logs/080_against_genome/bbmap_sort.log'
-#     singularity:
-#         bbmap_container
-#     shell:
-#         'bbmap.sh '
-#         'in={input.loci} '
-#         'out={params.out_prefix} '
-#         'ref={input.genome} '
-#         'path={params.ref_path} '
-#         'bamscript=bs.sh'
-#         '&> {log.map}; '
-#         'sh bs.sh '
-#         '&> {log.sort}'
-
-
+# Should be possible to combine this with the previous rule using outm and sam=1.3
 rule check_sam:
     input:
         'output/080_against_genome/bbmapped_full.sam'
@@ -170,27 +183,6 @@ rule bbmap_full:
         'trimreaddescriptions=t '
         '&> {log}'
 
-# # Indexes the genome, then maps the provided loci to it. 
-# # ref_path defines where the reference created by indexing goes
-# rule bbmap:
-#     input:
-#         genome = 'data/flye_denovo_full.racon.fasta',
-#         loci = 'output/080_against_genome/loci_noheader.fa'
-#     output:
-#         'output/080_against_genome/bbmapped.sam'
-#     params:
-#         ref_path = 'output/080_against_genome/'
-#     log:
-#         'output/logs/080_against_genome/bbmap_index_map.log'
-#     singularity:
-#         bbmap_container
-#     shell:
-#         'bbmap.sh '
-#         'in={input.loci} '
-#         'out={output} '
-#         'ref={input.genome} '
-#         'path={params.ref_path} '
-#         '&> {log}'
 
 # Remove the comment line from the filtered catalog file so that bbmap can read it later
 rule remove_header:
