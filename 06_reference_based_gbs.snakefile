@@ -44,6 +44,8 @@ subworkflow process_reads:
 rule target:
     input:
         expand('output/080_against_genome/{individual}_bwa.sam',
+                individual=ustacks_individuals),
+        expand('output/080_against_genome/{individual}_bbmap.sam',
                 individual=ustacks_individuals)
 
 
@@ -72,11 +74,12 @@ rule map_tidied_reads_bwa:
         '1> {output} '
         '2> {log}'
 
+
 # Map GBS reads to the genome using bbmap
 rule map_tidied_reads_bbmap:
     input:
         genome = 'data/flye_denovo_full.racon.fasta',
-        tidy_reads = process_reads('output/021_filtered/{individual}.fq.gz')
+        tidy_reads = 'output/021_filtered/{individual}.fq.gz'
     output:
         'output/080_against_genome/{individual}_bbmap.sam'
     params:

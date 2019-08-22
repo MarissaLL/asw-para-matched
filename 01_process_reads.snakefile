@@ -68,7 +68,7 @@ key_file = 'data/asw_para_matched/combined_key_data.csv'
 
 bbmap_container = 'shub://MarissaLL/singularity-containers:bbmap_37.92@fa973c37883055c243c5e37f82f68f4d'
 fastqc_container = 'shub://MarissaLL/singularity-containers:fastqc_0.11.5@2fa47d3690d60343361e575ae6c54a33'
-r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@1f713cf93d67765d2d37eb87339495de5'
+r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0@f713cf93d67765d2d37eb87339495de5'
 stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
 
 #########
