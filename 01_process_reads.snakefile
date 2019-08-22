@@ -154,6 +154,8 @@ rule combine_stats:
     script:
         'src/combine_stats.R'
 
+
+
 # Remove any sequence matching that of the adapter, and truncate reads to 80 bp 
 rule filter_adapters:
     input:
@@ -173,8 +175,6 @@ rule filter_adapters:
     log:
         adapter_log = 'output/logs/021_filtered/{individual}_adapters.log',
         truncation_log = 'output/logs/021_filtered/{individual}_truncation.log'
-    benchmark: 
-        'output/benchmarks/021_filtered/{individual}.txt'
     shell:
         'bbduk.sh '
         'threads={threads} '
@@ -188,11 +188,11 @@ rule filter_adapters:
         'gchist={output.gc_hist} '
         'gcbins=auto '
         '&> {log.adapter_log} '
-        ' | '
+        '| '
         'bbduk.sh '
         'threads={threads} '
-        'in=stdin.fq '
         'interleaved=f '
+        'in=stdin.fq '
         'outnonmatch={output.kept_FQ} '
         'outmatch={output.discarded_FQ} '
         'stats={output.truncation_stats} '
