@@ -187,8 +187,8 @@ rule filter_adapters:
         'findbestmatch=t '
         'gchist={output.gc_hist} '
         'gcbins=auto '
-        '&> {log.adapter_log} '
-        '| '
+        '2> {log.adapter_log} '
+        ' | ' 
         'bbduk.sh '
         'threads={threads} '
         'interleaved=f '
@@ -200,7 +200,7 @@ rule filter_adapters:
         'forcetrimright=79 '
         'minlength=80 '
         'ziplevel=9 '
-        '&> {log.truncation_log}'
+        '2> {log.truncation_log}'
 
 # Calculate how much of the read is ASW sequence
 rule readlength:
@@ -231,7 +231,6 @@ rule readlength:
         'reformat.sh '
         'in=stdin.fq '
         'int=f '
-        'out=stdout.fq '
         'lhist={output.lhist} '
         '2> {log.lhist_log}'
 
