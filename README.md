@@ -2,7 +2,7 @@
 
 An honours project analysing genotyping by sequencing data from the Argentine stem weevil (*Listronotus bonariensis*).
 
-Running the four snakefiles in order will allow the methods to be reproduced. In order to do so, use:
+Running the first four snakefiles in order will allow the methods to be reproduced. In order to do so, use:
 
 ``snakemake -s <snakefile.name> --use-singularity --cores=<number> ``
 
