@@ -1,55 +1,96 @@
 #!/usr/bin/env python3
 
-import multiprocessing
 
 ###########
 # GLOBALS #
 ###########
 
+bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d571b5e888e98e5b79f902c30388'
+bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
 bwa_container = 'shub://TomHarrop/singularity-containers:bwa_0.7.17'
+pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5@e546f843e2b84401284745a766546c90'
+samtools_container = 'shub://TomHarrop/singularity-containers:samtools_1.9'
 stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.3e'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
-samtools_container = 'shub://TomHarrop/singularity-containers:samtools_1.9'
-bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
+vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@230db32b3097775cd51432092f9cbcb1'
+
 
 
 #########
 # RULES #
 #########
+# grep -E -o ".{0,5}scaffold.{0,5}" populations.snps.vcf > scaffold_names.txt
 
 rule target:
     input:
-        'output/080_against_genome/sig_regions.fa',
-
-        # 'output/080_against_genome/locus_coordinates.tsv',
-        expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
-               suffix=['amb', 'ann', 'bwt', 'pac', 'sa']),
-        'output/080_against_genome/aln.sam',
-        'output/080_against_genome/aln_mapped_1.sam',
-        # 'output/080_against_genome/ref/genome/1/summary.txt',
-        # 'output/080_against_genome/bbmapped.sam',
-        'output/080_against_genome/loci_noheader.fa',
-        # 'output/080_against_genome/bbmapped_full.sam',
-        # 'output/080_against_genome/bbmapped_full.bam',
-        'output/080_against_genome/locus_coordinates.tsv',
-        # 'output/080_against_genome/bbmapped_full_sorted.bam',
-        # 'output/080_against_genome/bbmapped_full_sorted_sam3.sam',
-        'output/080_against_genome/bbmapped_checked_sorted.bam',
-        'output/080_against_genome/populations.snps.vcf'
+        'output/080_against_genome/filtered_catalog/populations.snps.vcf',
+        'output/080_against_genome/bbmapped_full.sam'
         
-# grep -E -o ".{0,5}scaffold.{0,5}" populations.snps.vcf > scaffold_names.txt
+        
+
+## Note that the location of the popmap is actually specified within the spid file
+## It is only specified here to link the dependencies of the rules
+rule convert_subset_bayescan_inputs:
+    input:
+        vcf = 'output/080_against_genome/filtered_catalog/populations.snps.vcf',
+        spid = 'data/{bayescan_subset}.spid',
+        popmap = 'output/070_bayescan/popmap_{bayescan_subset}.txt'
+    output:
+        'output/080_against_genome/{bayescan_subset}.geste-outputformat'
+    params:
+        in_format = 'VCF',
+        out_format = 'GESTE_BAYE_SCAN',
+        out_path = 'output/080_against_genome/{bayescan_subset}.geste'
+    singularity:
+        pgdspider_container
+    threads:
+        50
+    log:
+        'output/logs/080_against_genome/pgdspider_{bayescan_subset}.log'
+    shell:
+        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
+        '-inputfile {input.vcf} '
+        '-inputformat {params.in_format} '
+        '-outputfile {params.out_path}'
+        '-outputformat {params.out_format} '
+        '-spid {input.spid} '
+        '&> {log}'
+
+# Subset vcfs to only include individuals needed in each bayescan run
+rule subset_vcfs:
+    input:
+        individual_list = 'output/070_bayescan/{bayescan_subset}_indivs.txt',
+        full_vcf = 'output/080_against_genome/filtered_catalog/populations.snps.vcf'
+    output: 
+        subset_vcf = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.recode.vcf'
+    params:
+        outname = 'output/080_against_genome/filtered_catalog/{bayescan_subset}'
+    singularity:
+        vcftools_container
+    threads:
+        25
+    log:
+        'output/logs/080_against_genome/{bayescan_subset}_subset_vcf.log'
+    shell:
+        'vcftools '
+        '--vcf {input.full_vcf} '
+        '--out {params.outname} '
+        '--keep {input.individual_list} '
+        '--recode '
+        '&> {log}'
 
 
-# 
+# Run stacks populations on the mapped filtered catalog loci
 rule genome_population_stats:
     input:
-        aln_catalog = 'output/080_against_genome/catalog.fa.gz',
-        calls = 'output/080_against_genome/catalog.calls',
+        aln_catalog = 'output/080_against_genome/filtered_catalog/catalog.fa.gz',
+        calls = 'output/080_against_genome/filtered_catalog/catalog.calls',
+        popmap = 'output/010_config/filtered_popmap.txt'
     output:
-        'output/080_against_genome/populations.snps.vcf'
+        'output/080_against_genome/filtered_catalog/populations.snps.vcf'
     params:
-        stacks_dir = 'output/080_against_genome',
-        outdir = 'output/080_against_genome'
+        stacks_dir = 'output/080_against_genome/filtered_catalog',
+        outdir = 'output/080_against_genome/filtered_catalog'
     singularity:
         stacks2beta_container
     threads:
@@ -60,6 +101,7 @@ rule genome_population_stats:
         'populations '
         '-P {params.stacks_dir} '
         '-O {params.outdir} '
+        '-M {input.popmap} '
         '-t {threads} '
         '-r 0 '
         '--genepop '
@@ -71,96 +113,82 @@ rule genome_population_stats:
         '&> {log}'
 
 
-
-
-
-
-
-# Integrate alignment info back into stacks workflow
+# Integrate alignment info back into stacks workflow. Using edited file because the original only outputs
+# loci without a t in their name
 rule integrate_alignments:
     input:
         catalog = 'output/040_stacks/catalog.fa.gz',
-        bam = 'output/080_against_genome/bbmapped_checked_sorted.bam'
+        bam = 'output/080_against_genome/bbmapped_filtered.bam'
     output:
-        aln_catalog = 'output/080_against_genome/catalog.fa.gz',
-        tsv = 'output/080_against_genome/locus_coordinates.tsv',
-        calls = 'output/080_against_genome/catalog.calls'
+        aln_catalog = 'output/080_against_genome/filtered_catalog/catalog.fa.gz',
+        tsv = 'output/080_against_genome/filtered_catalog/locus_coordinates.tsv',
+        calls = 'output/080_against_genome/filtered_catalog/catalog.calls'
     params:
         stacks_dir = 'output/040_stacks',
-        out_dir = 'output/080_against_genome'
+        out_dir = 'output/080_against_genome/filtered_catalog/'
     threads:
         1
     log:
-        'output/logs/080_against_genome/integrate_alignments.log'
-    singularity:
-        stacks_container
+        'output/logs/080_against_genome/integrate_filtered_alignments.log'
+    
     shell:
-        'stacks-integrate-alignments '
+        ' ./stacks-integrate-alignments-edited '
         '-P {params.stacks_dir} '
         '-B {input.bam} '
         '-O {params.out_dir} '
         '&> {log}' 
 
-# Format conversion
-rule sam_to_bam:
-    input:
-        aln = 'output/080_against_genome/bbmapped_checked_sorted.sam'
-    output:
-        bam = 'output/080_against_genome/bbmapped_checked_sorted.bam'
-    threads:
-        1
-    log:
-        'output/logs/080_against_genome/sam_to_bam.log'
-    singularity:
-        stacks_container
-    shell:
-        'samtools view '
-        '--threads {threads} '
-        '-O BAM '
-        '-bh '
-        '{input.aln} '
-        '1> {output.bam} '
-        '2> {log}'
 
 
-# Sort the sam file by locus name. Can this output a bam?
+
+# Sort the sam file by locus name. Output as a bam file
 rule sort_sam:
     input:
-        sam = 'output/080_against_genome/bbmapped_checked_14.sam',
+        sam = 'output/080_against_genome/bbmapped_filtered.sam',
         ref = 'data/flye_denovo_full.racon.fasta'
     output:
-        'output/080_against_genome/bbmapped_checked_sorted.sam'
+        'output/080_against_genome/bbmapped_filtered.bam'
     log:
-        'output/logs/080_against_genome/samtools_sort.log'
+        'output/logs/080_against_genome/samtools_sort_filtered.log'
     shell:
         'samtools sort '
         '{input.sam} '
         '-o {output} '
+        '-O BAM '
         '-n '
         '--reference {input.ref} '
         '&> {log}'
 
 
-# Should be possible to combine this with the previous rule using outm and sam=1.3
-rule check_sam:
+
+
+rule bbmap_filtered:
     input:
-        'output/080_against_genome/bbmapped_full.sam'
+        genome = 'data/flye_denovo_full.racon.fasta',
+        loci = 'output/080_against_genome/loci_noheader.fa'
     output:
-        'output/080_against_genome/bbmapped_checked_14.sam'
+        'output/080_against_genome/bbmapped_filtered.sam'
+    params:
+        ref_path = 'output/080_against_genome/'
     log:
-        'output/logs/080_against_genome/check_sam.log'
+        'output/logs/080_against_genome/bbmap_index_map_filtered.log'
     singularity:
         bbmap_container
     shell:
-        'reformat.sh '
-        'in={input} '
+        'bbmap.sh '
+        'in={input.loci} '
         'out={output} '
-        'sam=1.3 '
-        'mappedonly=t '
+        'ref={input.genome} '
+        'path={params.ref_path} '
+        'trimreaddescriptions=t '
         '&> {log}'
 
 
-# Indexes the genome, then maps the provided loci to it. 
+
+
+
+# Indexes the genome, then maps the full de novo catalog to it. 
+# Not currently used for anything further. 
 # ref_path defines where the reference created by indexing goes
 rule bbmap_full:
     input:

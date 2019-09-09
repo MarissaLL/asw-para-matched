@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy
-import os
 import pandas
+import pickle
 
 #############
 # FUNCTIONS #
@@ -27,10 +27,11 @@ def lookup_indiv(pickle_file, individual):
 # GLOBALS #
 ###########
 
-counts_file = 'output/010_config/filtering_stats.csv'
+counts_file = 'output/010_config/old_filtering_stats.csv'
 
 bbmap_container = 'shub://MarissaLL/singularity-containers:bbmap_37.92@fa973c37883055c243c5e37f82f68f4d'
 bwa_container = 'shub://TomHarrop/singularity-containers:bwa_0.7.17'
+samtools_container = 'shub://MarissaLL/singularity-containers:samtools_1.9'
 stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c7d8c8ff2baf7ad763ad7bcd17b'
 
 #########
@@ -38,7 +39,7 @@ stacks2b_container = 'shub://TomHarrop/singularity-containers:stacks_2.0b@099f0c
 #########
 
 ustacks_individuals = get_ustacks_individuals(counts_file)
-
+test_individuals = ['I16', 'I21']
 
 
 #########
@@ -48,156 +49,114 @@ ustacks_individuals = get_ustacks_individuals(counts_file)
 subworkflow process_reads:
     snakefile: '01_process_reads.snakefile'
 
+map_method = ['bbmap']
+
 
 rule target:
     input:
-        expand('output/080_against_genome/{individual}_bwa.sam',
-                individual=ustacks_individuals),
-        expand('output/080_against_genome/{individual}_bbmap.sam',
-                individual=ustacks_individuals),
-        expand('output/081_genome_mapped_stacks/{individual}_bwa.snps.tsv.gz',
-                individual=ustacks_individuals)
+     'output/081_genome_mapped_stacks/catalog.fa.gz',
+        'output/081_genome_mapped_stacks/catalog.calls'
+        # # expand('output/080_against_genome/{individual}_bwa.sam',
+        # #         individual=ustacks_individuals),
+        # expand('output/081_genome_mapped_stacks/{individual}_bbmap.bam',
+        #         individual=ustacks_individuals),
+        # # 'output/081_genome_mapped_stacks/catalog.fa.gz',
+        # 'output/logs/081_genome_mapped_stacks/collated_read_bbmap_stats.log'
+        #        # # expand('output/081_genome_mapped_stacks/{individual}_bwa.snps.tsv.gz',
+        # #         individual=ustacks_individuals)
 
-rule run_sstacks:
+
+
+
+
+rule run_gstacks:
     input:
-        catalog = 'output/081_genome_mapped_stacks/catalog.tags.tsv.gz',
+        bam_files = expand('output/081_genome_mapped_stacks/{individual}_bbmap.bam',
+                            individual=ustacks_individuals),
+       # popmap = 'output/081_genome_mapped_stacks/testing_popmap.txt'
         popmap = 'output/010_config/filtered_popmap.txt'
     output:
-        expand('output/081_genome_mapped_stacks/{individual}.matches.tsv.gz',
-                individual=ustacks_individuals)
+        'output/081_genome_mapped_stacks/catalog.fa.gz',
+        'output/081_genome_mapped_stacks/catalog.calls'
+    params:
+        stacks_dir = 'output/081_genome_mapped_stacks/'
+    threads:
+        18
+    log:
+        'output/logs/081_genome_mapped_stacks/gstacks_bbmapped_reads.log'
     singularity:
         stacks2b_container
-    threads:
-        75
-    params:
-        stacks_dir = 'output/081_genome_mapped_stacks'
-    log:
-        'output/logs/081_genome_mapped_stacks/sstacks.log'
     shell:
-        'sstacks '
-        '-P {params.stacks_dir} '
+        'gstacks '
+        '-I {params.stacks_dir} '
+        '-S _bbmap.bam '
+        '-O {params.stacks_dir} '
         '-M {input.popmap} '
-        '-p {threads} '
-        '&> {log}'
-
-
-# b — database/batch ID of the catalog to consider (default: guess).
-# P — path to the directory containing Stacks files.
-# M — path to a population map file from which to take sample names.
-# s — filename prefix from which to load sample loci.
-# c — path to the catalog.
-# g,--aligned — base matching on alignment position, not sequence identity.
-# p — enable parallel execution with num_threads threads.
-# o — output path to write results.
-# x — don't verify haplotype of matching locus.
-
-
-
-
-## Do I need to worry about the sample prefix -s? "s — sample prefix from which to load loci into the catalog."
-
-# Generate a catalog
-rule run_cstacks;
-    input:
-        'output/081_genome_mapped_stacks/{individual}_bwa.tags.tsv.gz',
-        'output/081_genome_mapped_stacks/{individual}_bwa.models.tsv.gz', 
-        'output/081_genome_mapped_stacks/{individual}_bwa.snps.tsv.gz', 
-        'output/081_genome_mapped_stacks/{individual}_bwa.alleles.tsv.gz',
-        popmap = 'output/010_config/filtered_popmap.txt'
-    output:
-        'output/081_genome_mapped_stacks/catalog.fa.gz'
-    params:
-        input_dir = 'output/081_genome_mapped_stacks/',
-        output_dir = 'output/081_genome_mapped_stacks/',
-        n = '5'
-    threads:
-            12
-    log:
-        'output/logs/081_genome_mapped_stacks/cstacks.log'
-    singularity:
-            stacks2b_container
-        shell:
-            'cstacks '
-            '--aligned '
-            '-P {params.input_dir} '
-            '-M {input.popmap} '
-            '-n {params.n} '
-            '-p {threads} '
-            '-s '
-            '-o {params.outdir} '
-            '&> {log}'
-
-
-# Assess read mapping rates based on the pstacks and process radtags logs at this point. (number of primary 
-# alignments/initial num reads from process_radtags; proportion discarded due to soft-clipping; avg per locus 
-# coverage
-
-
-###### Might need to consider if mapping rate is low
-# --max_clipped [float] — alignments with more than this fraction of soft-clipped bases are discarded (default 15%).
-# --min_mapq [int] — minimum required quality (default 10).
-# --keep_sec_alns — keep secondary alignments (default: false, only keep primary alignments).
-
-
-
-# Extract reference-mapped stacks
-rule run_pstacks:
-    input:
-        'output/080_against_genome/{individual}_bwa.sam',
-        pickle = 'output/010_config/individual_i.p'
-    output:
-        'output/081_genome_mapped_stacks/{individual}_bwa.tags.tsv.gz',
-        'output/081_genome_mapped_stacks/{individual}_bwa.models.tsv.gz', 
-        'output/081_genome_mapped_stacks/{individual}_bwa.snps.tsv.gz', 
-        'output/081_genome_mapped_stacks/{individual}_bwa.alleles.tsv.gz'
-    params:
-        input_filetype = 'sam',
-        outdir = 'output/081_genome_mapped_stacks/',
-        i = lambda wildcards, input: lookup_indiv(input.pickle, wildcards.individual),
-        m = '3'
-    threads:
-        12
-    log:
-        'output/logs/081_genome_mapped_stacks/{individual}_pstacks.log'
-    singularity:
-        stacks2b_container
-    shell:
-        'pstacks '
-        '-f {input} '
-        '-i {params.i} '
-        '-m 3 '
-        '-p {threads} '
-        '-t {params.input_filetype} '
-        '-o {params.outdir} '
-        '&> {log}'
-
-
-
-
-# Map GBS reads to the genome using BWA
-rule map_tidied_reads_bwa:
-    input:
-        tidy_reads = 'output/021_filtered/{individual}.fq.gz',
-        index = expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
-               suffix=['amb', 'ann', 'bwt', 'pac', 'sa'])
-    output:
-        'output/080_against_genome/{individual}_bwa.sam'
-    params:
-        prefix = 'output/080_against_genome/flye_denovo_full.racon.fasta',
-    threads:
-        30
-    log:
-        'output/logs/080_against_genome/bwa_map_reads_{individual}.log'
-    singularity:
-        bwa_container
-    shell:
-        'bwa mem '
+        '--max-clipped 0.5 '
+        '--min-mapq 1 '
+        '--details '
+        '--phasing-dont-prune-hets '
+        '--unpaired '
         '-t {threads} '
-        '{params.prefix} '
-        '-B 1 ' # with -B 1 I get 18 alignments, with 2 I get 4
-        '{input.tidy_reads} '
-        '1> {output} '
         '2> {log}'
+
+
+
+# Sort the sam file by locus name. Can this output a bam?
+rule sort_sam:
+    input:
+        sam = 'output/081_genome_mapped_stacks/{individual}_bbmap.sam',
+        ref = 'data/flye_denovo_full.racon.fasta'
+    output:
+        'output/081_genome_mapped_stacks/{individual}_bbmap.bam'
+    log:
+        'output/logs/081_genome_mapped_stacks/samtools_sort_{individual}.log'
+    singularity:
+        samtools_container
+    shell:
+        'samtools sort '
+        '{input.sam} '
+        '-o {output} '
+        '-O BAM '
+        '--reference {input.ref} '
+        '&> {log}'
+
+# # Map GBS reads to the genome using BWA
+# rule map_tidied_reads_bwa:
+#     input:
+#         tidy_reads = 'output/021_filtered/{individual}.fq.gz',
+#         index = expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
+#                suffix=['amb', 'ann', 'bwt', 'pac', 'sa'])
+#     output:
+#         'output/081_genome_mapped_stacks/{individual}_bwa.sam'
+#     params:
+#         prefix = 'output/080_against_genome/flye_denovo_full.racon.fasta',
+#     log:
+#         'output/logs/081_genome_mapped_stacks/bwa_map_reads_{individual}.log'
+#     singularity:
+#         bwa_container
+#     shell:
+#         'bwa mem '
+#         '-t 8 '
+#         '{params.prefix} '
+#         '-B 4 ' # with -B 1 I get 18 alignments, with 2 I get 4. default is 4 I think
+#         '{input.tidy_reads} '
+#         '1> {output} '
+#         '2> {log}'
+
+
+rule get_bbmap_mapping_stats:
+    input:
+        expand('output/logs/081_genome_mapped_stacks/bbmap_map_reads_{individual}.log',
+                individual=ustacks_individuals)
+    output:
+        'output/logs/081_genome_mapped_stacks/collated_read_bbmap_stats.log' 
+    shell:
+        'grep '
+        '--with-filename '
+        '"unambiguous" '
+        '-C 1 '
+        '{input} > {output}'       
 
 
 # Map GBS reads to the genome using bbmap
@@ -206,11 +165,11 @@ rule map_tidied_reads_bbmap:
         genome = 'data/flye_denovo_full.racon.fasta',
         tidy_reads = 'output/021_filtered/{individual}.fq.gz'
     output:
-        'output/080_against_genome/{individual}_bbmap.sam'
+        'output/081_genome_mapped_stacks/{individual}_bbmap.sam'
     params:
-        ref_path = 'output/080_against_genome/'
+        ref_path = 'output/081_genome_mapped_stacks/'
     log:
-        'output/logs/080_against_genome/bbmap_map_reads_{individual}.log'
+        'output/logs/081_genome_mapped_stacks/bbmap_map_reads_{individual}.log'
     singularity:
         bbmap_container
     shell:
@@ -224,25 +183,25 @@ rule map_tidied_reads_bbmap:
     
 
 
-# Index the genome for BWA
-rule bwa_index:
-    input:
-        'data/flye_denovo_full.racon.fasta'
-    output:
-        expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
-               suffix=['amb', 'ann', 'bwt', 'pac', 'sa'])
-    params:
-        prefix = 'output/080_against_genome/flye_denovo_full.racon.fasta',
-        algorithm = 'is'
-    threads:
-        1
-    log:
-        'output/logs/080_against_genome/bwa_index.log'
-    singularity:
-        bwa_container
-    shell:
-        'bwa index '
-        '-p {params.prefix} '
-        '-a {params.algorithm} '
-        '{input} '
-        '&> {log}'
+# # Index the genome for BWA
+# rule bwa_index:
+#     input:
+#         'data/flye_denovo_full.racon.fasta'
+#     output:
+#         expand('output/080_against_genome/flye_denovo_full.racon.fasta.{suffix}',
+#                suffix=['amb', 'ann', 'bwt', 'pac', 'sa'])
+#     params:
+#         prefix = 'output/080_against_genome/flye_denovo_full.racon.fasta',
+#         algorithm = 'is'
+#     threads:
+#         30
+#     log:
+#         'output/logs/080_against_genome/bwa_index.log'
+#     singularity:
+#         bwa_container
+#     shell:
+#         'bwa index '
+#         '-p {params.prefix} '
+#         '-a {params.algorithm} '
+#         '{input} '
+#         '&> {log}'
