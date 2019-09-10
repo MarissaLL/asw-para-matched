@@ -5,16 +5,16 @@
 # GLOBALS #
 ###########
 
-bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1@e035d571b5e888e98e5b79f902c30388'
+bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1'
 bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
 bwa_container = 'shub://TomHarrop/singularity-containers:bwa_0.7.17'
-pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5@e546f843e2b84401284745a766546c90'
+pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5'
 samtools_container = 'shub://TomHarrop/singularity-containers:samtools_1.9'
 stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.3e'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9@bb2f9183318871f6228b51104056a2d0'
 vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@230db32b3097775cd51432092f9cbcb1'
 
-
+bayescan_subsets = ['compared_island', 'compared_4pops', 'compared_para']
 
 #########
 # RULES #
@@ -24,29 +24,63 @@ vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@23
 rule target:
     input:
         'output/080_against_genome/filtered_catalog/populations.snps.vcf',
-        'output/080_against_genome/bbmapped_full.sam'
-        
+        'output/080_against_genome/bbmapped_full.sam',
+        expand('output/080_against_genome/filtered_catalog/{bayescan_subset}.sel',
+               bayescan_subset=bayescan_subsets)
+
+
+
+rule bayescan:
+    input:
+        genotypes = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste-outputformat'
+    output:
+        'output/080_against_genome/filtered_catalog/{bayescan_subset}.sel',
+        'output/080_against_genome/filtered_catalog/{bayescan_subset}_fst.txt'
+    params:
+        outdir = 'output/080_against_genome/filtered_catalog/',
+        outname = '{bayescan_subset}'
+    singularity:
+        bayescan_container
+    threads:
+        6
+    log:
+        'output/logs/080_against_genome/{bayescan_subset}_bayescan_filtered_catalog.log'
+    shell:
+        'bayescan_2.1 '
+        '{input.genotypes} '
+        '-od {params.outdir} '
+        '-o {params.outname} '
+        '-pilot 5000 '
+        '-nbp 20 '
+        '-burn 15000 '
+        '-n 30000 '
+        '-thin 10 '
+        '-pr_odds 500 '
+        '-out_pilot '
+        '-out_freq '
+        '&> {log}'
+
         
 
 ## Note that the location of the popmap is actually specified within the spid file
 ## It is only specified here to link the dependencies of the rules
 rule convert_subset_bayescan_inputs:
     input:
-        vcf = 'output/080_against_genome/filtered_catalog/populations.snps.vcf',
+        vcf = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.recode.vcf',
         spid = 'data/{bayescan_subset}.spid',
         popmap = 'output/070_bayescan/popmap_{bayescan_subset}.txt'
     output:
-        'output/080_against_genome/{bayescan_subset}.geste-outputformat'
+        'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste-outputformat'
     params:
         in_format = 'VCF',
         out_format = 'GESTE_BAYE_SCAN',
-        out_path = 'output/080_against_genome/{bayescan_subset}.geste'
+        out_path = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste'
     singularity:
         pgdspider_container
     threads:
         50
     log:
-        'output/logs/080_against_genome/pgdspider_{bayescan_subset}.log'
+        'output/logs/080_against_genome/pgdspider_{bayescan_subset}_filtered_catalog.log'
     shell:
         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
         '-inputfile {input.vcf} '
