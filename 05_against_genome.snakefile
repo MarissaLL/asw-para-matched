@@ -15,6 +15,7 @@ stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9
 vcftools_container = 'shub://MarissaLL/singularity-containers:vcftools_0.1.17@230db32b3097775cd51432092f9cbcb1'
 
 bayescan_subsets = ['compared_island', 'compared_4pops', 'compared_para']
+catalog_version = ['filtered', 'full']
 
 #########
 # RULES #
@@ -23,114 +24,163 @@ bayescan_subsets = ['compared_island', 'compared_4pops', 'compared_para']
 
 rule target:
     input:
-        'output/080_against_genome/filtered_catalog/populations.snps.vcf',
+        expand('output/080_against_genome/{catalog_ver}_catalog/populations.snps.vcf',
+                catalog_ver=catalog_version),
         'output/080_against_genome/bbmapped_full.sam',
-        expand('output/080_against_genome/filtered_catalog/{bayescan_subset}.sel',
-               bayescan_subset=bayescan_subsets)
+        expand('output/080_against_genome/{catalog_ver}_catalog/maf_stats.INFO',
+                catalog_ver=catalog_version),
+        expand('output/080_against_genome/{catalog_ver}_catalog/missingness.lmiss',
+                catalog_ver=catalog_version)
+        # expand('trial/{bayescan_subset}.sel',
+        #        bayescan_subset=bayescan_subsets)
 
 
 
-rule bayescan:
-    input:
-        genotypes = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste-outputformat'
-    output:
-        'output/080_against_genome/filtered_catalog/{bayescan_subset}.sel',
-        'output/080_against_genome/filtered_catalog/{bayescan_subset}_fst.txt'
-    params:
-        outdir = 'output/080_against_genome/filtered_catalog/',
-        outname = '{bayescan_subset}'
-    singularity:
-        bayescan_container
-    threads:
-        6
-    log:
-        'output/logs/080_against_genome/{bayescan_subset}_bayescan_filtered_catalog.log'
-    shell:
-        'bayescan_2.1 '
-        '{input.genotypes} '
-        '-od {params.outdir} '
-        '-o {params.outname} '
-        '-pilot 5000 '
-        '-nbp 20 '
-        '-burn 15000 '
-        '-n 30000 '
-        '-thin 10 '
-        '-pr_odds 500 '
-        '-out_pilot '
-        '-out_freq '
-        '&> {log}'
+# rule bayescan:
+#     input:
+#         genotypes = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste-outputformat'
+#     output:
+#         'trial/{bayescan_subset}.sel',
+#         'trial/{bayescan_subset}_fst.txt'
+#     params:
+#         outdir = 'trial/',
+#         outname = '{bayescan_subset}'
+#     singularity:
+#         bayescan_container
+#     threads:
+#         6
+#     log:
+#         'trial/{bayescan_subset}_bayescan_filtered_catalog.log'
+#     shell:
+#         'bayescan_2.1 '
+#         '{input.genotypes} '
+#         '-od {params.outdir} '
+#         '-o {params.outname} '
+#         '-pilot 5000 '
+#         '-nbp 20 '
+#         '-burn 15000 '
+#         '-n 30000 '
+#         '-thin 10 '
+#         '-pr_odds 500 '
+#         '-out_pilot '
+#         '-out_freq '
+#         '&> {log}'
 
         
 
-## Note that the location of the popmap is actually specified within the spid file
-## It is only specified here to link the dependencies of the rules
-rule convert_subset_bayescan_inputs:
-    input:
-        vcf = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.recode.vcf',
-        spid = 'data/{bayescan_subset}.spid',
-        popmap = 'output/070_bayescan/popmap_{bayescan_subset}.txt'
-    output:
-        'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste-outputformat'
-    params:
-        in_format = 'VCF',
-        out_format = 'GESTE_BAYE_SCAN',
-        out_path = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste'
-    singularity:
-        pgdspider_container
-    threads:
-        50
-    log:
-        'output/logs/080_against_genome/pgdspider_{bayescan_subset}_filtered_catalog.log'
-    shell:
-        'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
-        '-inputfile {input.vcf} '
-        '-inputformat {params.in_format} '
-        '-outputfile {params.out_path}'
-        '-outputformat {params.out_format} '
-        '-spid {input.spid} '
-        '&> {log}'
+# ## Note that the location of the popmap is actually specified within the spid file
+# ## It is only specified here to link the dependencies of the rules
+# rule convert_subset_bayescan_inputs:
+#     input:
+#         vcf = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.recode.vcf',
+#         spid = 'data/{bayescan_subset}.spid',
+#         popmap = 'output/070_bayescan/popmap_{bayescan_subset}.txt'
+#     output:
+#         'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste-outputformat'
+#     params:
+#         in_format = 'VCF',
+#         out_format = 'GESTE_BAYE_SCAN',
+#         out_path = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.geste'
+#     singularity:
+#         pgdspider_container
+#     threads:
+#         50
+#     log:
+#         'output/logs/080_against_genome/pgdspider_{bayescan_subset}_filtered_catalog.log'
+#     shell:
+#         'java -jar /opt/pgdspider/PGDSpider2-cli.jar '
+#         '-inputfile {input.vcf} '
+#         '-inputformat {params.in_format} '
+#         '-outputfile {params.out_path}'
+#         '-outputformat {params.out_format} '
+#         '-spid {input.spid} '
+#         '&> {log}'
 
-# Subset vcfs to only include individuals needed in each bayescan run
-rule subset_vcfs:
+# # Subset vcfs to only include individuals needed in each bayescan run
+# rule subset_vcfs:
+#     input:
+#         individual_list = 'output/070_bayescan/{bayescan_subset}_indivs.txt',
+#         full_vcf = 'output/080_against_genome/filtered_catalog/populations.snps.vcf'
+#     output: 
+#         subset_vcf = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.recode.vcf'
+#     params:
+#         outname = 'output/080_against_genome/filtered_catalog/{bayescan_subset}'
+#     singularity:
+#         vcftools_container
+#     threads:
+#         25
+#     log:
+#         'output/logs/080_against_genome/{bayescan_subset}_subset_vcf.log'
+#     shell:
+#         'vcftools '
+#         '--vcf {input.full_vcf} '
+#         '--out {params.outname} '
+#         '--keep {input.individual_list} '
+#         '--recode '
+#         '&> {log}'
+
+## Extract loci that fulfil the MAF criteria. ALSO need to do missingness for the full catalog.
+#rule extract_passing_loci:
     input:
-        individual_list = 'output/070_bayescan/{bayescan_subset}_indivs.txt',
-        full_vcf = 'output/080_against_genome/filtered_catalog/populations.snps.vcf'
-    output: 
-        subset_vcf = 'output/080_against_genome/filtered_catalog/{bayescan_subset}.recode.vcf'
+        expand('output/080_against_genome/{catalog_ver}_catalog/maf_stats.INFO',
+                catalog_ver=catalog_version),
+        expand('output/080_against_genome/{catalog_ver}_catalog/missingness.lmiss',
+                catalog_ver=catalog_version)
+    output:
+        'output/080_against_genome/pass_loci.txt'
+
+
+## Extract missingness info
+rule extract_missingness_rate:
+    input:
+        'output/080_against_genome/{catalog_ver}_catalog/populations.snps.vcf'
+    output:
+        'output/080_against_genome/{catalog_ver}_catalog/missingness.lmiss'
     params:
-        outname = 'output/080_against_genome/filtered_catalog/{bayescan_subset}'
-    singularity:
-        vcftools_container
-    threads:
-        25
+        output_name = 'output/080_against_genome/{catalog_ver}_catalog/missingness'
     log:
-        'output/logs/080_against_genome/{bayescan_subset}_subset_vcf.log'
+        'output/logs/080_against_genome/extract_missingness_{catalog_ver}.log'
     shell:
         'vcftools '
-        '--vcf {input.full_vcf} '
-        '--out {params.outname} '
-        '--keep {input.individual_list} '
-        '--recode '
-        '&> {log}'
+        '--vcf {input} '
+        '--missing-site '
+        '--out {params.output_name} '
+        '2> {log}'
 
+## Extract maf info
+rule extract_allele_frequencies:
+    input:
+        'output/080_against_genome/{catalog_ver}_catalog/populations.snps.vcf'
+    output:
+        'output/080_against_genome/{catalog_ver}_catalog/maf_stats.INFO'
+    params:
+        output_name = 'output/080_against_genome/{catalog_ver}_catalog/maf_stats'
+    log:
+        'output/logs/080_against_genome/extract_AF_{catalog_ver}.log'
+    shell:
+        'vcftools '
+        '--vcf {input} '
+        '--get-INFO AF '
+        '--out {params.output_name} '
+        '2> {log}'
 
 # Run stacks populations on the mapped filtered catalog loci
 rule genome_population_stats:
     input:
-        aln_catalog = 'output/080_against_genome/filtered_catalog/catalog.fa.gz',
-        calls = 'output/080_against_genome/filtered_catalog/catalog.calls',
+        aln_catalog = 'output/080_against_genome/{catalog_ver}_catalog/catalog.fa.gz',
+        calls = 'output/080_against_genome/{catalog_ver}_catalog/catalog.calls',
         popmap = 'output/010_config/filtered_popmap.txt'
     output:
-        'output/080_against_genome/filtered_catalog/populations.snps.vcf'
+        'output/080_against_genome/{catalog_ver}_catalog/populations.snps.vcf'
     params:
-        stacks_dir = 'output/080_against_genome/filtered_catalog',
-        outdir = 'output/080_against_genome/filtered_catalog'
+        stacks_dir = 'output/080_against_genome/{catalog_ver}_catalog',
+        outdir = 'output/080_against_genome/{catalog_ver}_catalog'
     singularity:
         stacks2beta_container
     threads:
         50
     log:
-        'output/logs/080_against_genome/genome_pop_stats.log'
+        'output/logs/080_against_genome/genome_pop_stats_{catalog_ver}.log'
     shell:
         'populations '
         '-P {params.stacks_dir} '
@@ -152,18 +202,19 @@ rule genome_population_stats:
 rule integrate_alignments:
     input:
         catalog = 'output/040_stacks/catalog.fa.gz',
-        bam = 'output/080_against_genome/bbmapped_filtered.bam'
+        calls = 'output/040_stacks/catalog.calls',
+        bam = 'output/080_against_genome/bbmapped_{catalog_ver}.bam'
     output:
-        aln_catalog = 'output/080_against_genome/filtered_catalog/catalog.fa.gz',
-        tsv = 'output/080_against_genome/filtered_catalog/locus_coordinates.tsv',
-        calls = 'output/080_against_genome/filtered_catalog/catalog.calls'
+        aln_catalog = 'output/080_against_genome/{catalog_ver}_catalog/catalog.fa.gz',
+        tsv = 'output/080_against_genome/{catalog_ver}_catalog/locus_coordinates.tsv',
+        calls = 'output/080_against_genome/{catalog_ver}_catalog/catalog.calls'
     params:
         stacks_dir = 'output/040_stacks',
-        out_dir = 'output/080_against_genome/filtered_catalog/'
+        out_dir = 'output/080_against_genome/{catalog_ver}_catalog/'
     threads:
         1
     log:
-        'output/logs/080_against_genome/integrate_filtered_alignments.log'
+        'output/logs/080_against_genome/integrate_{catalog_ver}_alignments.log'
     
     shell:
         ' ./stacks-integrate-alignments-edited '
@@ -178,12 +229,12 @@ rule integrate_alignments:
 # Sort the sam file by locus name. Output as a bam file
 rule sort_sam:
     input:
-        sam = 'output/080_against_genome/bbmapped_filtered.sam',
+        sam = 'output/080_against_genome/bbmapped_{catalog_ver}.sam',
         ref = 'data/flye_denovo_full.racon.fasta'
     output:
-        'output/080_against_genome/bbmapped_filtered.bam'
+        'output/080_against_genome/bbmapped_{catalog_ver}.bam'
     log:
-        'output/logs/080_against_genome/samtools_sort_filtered.log'
+        'output/logs/080_against_genome/samtools_sort_{catalog_ver}.log'
     shell:
         'samtools sort '
         '{input.sam} '
