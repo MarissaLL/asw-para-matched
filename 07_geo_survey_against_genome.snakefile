@@ -34,17 +34,9 @@ catalog_version = ['ref_based']
 
 rule target:
 	input:
-		'output/090_geo_survey/ref_based/catalog.fa.gz',
-		'output/090_geo_survey/catalog_mapped/catalog.fa.gz',
-		'output/090_geo_survey/bbmapped_full.sam',
 		'output/090_geo_survey/catalog_mapped/pre_filter/populations.snps.vcf',
-		'output/090_geo_survey/ref_based/pre_filter/populations.snps.vcf',
-		expand('output/090_geo_survey/{dataset_approach}/filtered/populations.snps.vcf',
-				dataset_approach=catalog_version )
-
-
-
-
+		'output/090_geo_survey/ref_based/pre_filter/populations.snps.vcf'
+		
 
 
 
