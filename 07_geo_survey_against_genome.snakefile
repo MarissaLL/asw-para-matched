@@ -11,6 +11,8 @@ bayescan_container = 'shub://MarissaLL/singularity-containers:bayescan_2.1'
 bbmap_container = 'shub://TomHarrop/singularity-containers:bbmap_38.45'
 bwa_container = 'shub://TomHarrop/singularity-containers:bwa_0.7.17'
 pgdspider_container = 'shub://MarissaLL/singularity-containers:pgdspider_2.1.1.5'
+plink_container = 'shub://TomHarrop/singularity-containers:plink_1.90beta5'
+r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0'
 samtools_container = 'shub://TomHarrop/singularity-containers:samtools_1.9'
 stacks_container = 'shub://TomHarrop/singularity-containers:stacks_2.3e'
 stacks2beta_container = 'shub://TomHarrop/singularity-containers:stacks_2.0beta9'
@@ -22,7 +24,8 @@ filtered_popmap = 'data/geo_survey_filtered_popmap.txt'
 indivs = pandas.read_csv(filtered_popmap, sep = '\t', header=None)
 filtered_individuals = indivs[0]
 
-catalog_version = ['filtered', 'full']
+catalog_version = ['ref_based']
+# , 'catalog_mapped'
 
 #########
 # RULES #
@@ -35,14 +38,137 @@ rule target:
 		'output/090_geo_survey/catalog_mapped/catalog.fa.gz',
 		'output/090_geo_survey/bbmapped_full.sam',
 		'output/090_geo_survey/catalog_mapped/pre_filter/populations.snps.vcf',
-		'output/090_geo_survey/ref_based/pre_filter/populations.snps.vcf'
+		'output/090_geo_survey/ref_based/pre_filter/populations.snps.vcf',
+		expand('output/090_geo_survey/{dataset_approach}/filtered/populations.snps.vcf',
+				dataset_approach=catalog_version )
 
 
 
 
 
+# Run populations again on filtered data to get population summary statistics. 
+# Output a fasta file of the consensus sequences for the filtered loci
+rule populations_stats:
+    input:
+        aln_catalog = 'output/090_geo_survey/{dataset_approach}/catalog.fa.gz',
+        calls ='output/090_geo_survey/{dataset_approach}/catalog.calls',
+        popmap = 'data/geo_survey_filtered_popmap.txt',
+        whitelist = 'output/090_geo_survey/{dataset_approach}/whitelist.txt'
+    output:
+        'output/090_geo_survey/{dataset_approach}/filtered/populations.snps.vcf',
+        'output/090_geo_survey/{dataset_approach}/filtered/populations.plink.ped',
+        'output/090_geo_survey/{dataset_approach}/filtered/populations.loci.fa'
+    params:
+        stacks_dir = 'output/090_geo_survey/{dataset_approach}',
+        outdir = 'output/090_geo_survey/{dataset_approach}/filtered'
+    singularity:
+        stacks2beta_container
+    threads:
+        20
+    log:
+        'output/logs/090_geo_survey/populations_filtered_{dataset_approach}.log'
+    shell:
+        'populations '
+        '-P {params.stacks_dir} '
+        '-M {input.popmap} '
+        '-O {params.outdir} '
+        '-W {input.whitelist} '
+        '-t {threads} '
+        '-r 0 '
+        '--genepop '
+        '--plink '
+        '--vcf '
+        '--hwe '
+        '--fstats '
+        '--fasta_loci '
+        '&> {log}'
 
 
+
+# Also still makes a popmap which we don't need
+rule make_whitelist:
+    input:
+        plink_file = 'output/090_geo_survey/{dataset_approach}/plink.raw'
+    output:
+        whitelist = 'output/090_geo_survey/{dataset_approach}/whitelist.txt'
+    singularity:
+        r_container
+    log:
+        'output/logs/090_geo_survey/make_whitelist_{dataset_approach}.log'
+    script:
+        'src/make_whitelist_popmap.R'
+
+
+# 10 Convert ped to plink format, specify that chromosomes are unknown so that it behaves
+rule convert_to_plinkraw:
+    input:
+        ped = 'output/090_geo_survey/{dataset_approach}/snps.ped',
+        map = 'output/090_geo_survey/{dataset_approach}/snps.map'
+    output:
+        'output/090_geo_survey/{dataset_approach}/plink.raw'
+    params:
+        workdir = 'output/090_geo_survey/{dataset_approach}'
+    singularity:
+        plink_container
+    threads:
+        25
+    log:
+        'output/logs/090_geo_survey/convert_plinkraw_{dataset_approach}.log'
+    shell:
+        'cd {params.workdir} || exit 1 ; '
+        'plink '
+        '--ped snps.ped '
+        '--map snps.map '
+        '--recode A '
+        '--aec'
+
+
+# 09 Filter SNPs on MAF and missing rate, also filter samples by missing rate
+rule filter_snps_indivs:
+    input:
+        'output/090_geo_survey/{dataset_approach}/snps.gds'
+    output:
+        'output/090_geo_survey/{dataset_approach}/snps.ped',
+        'output/090_geo_survey/{dataset_approach}/snps.map'
+    params:
+        maf = 0.05,
+        missing_rate = 0.2,
+        sample_missing_quantile = 1,
+        ped_file = 'output/090_geo_survey/{dataset_approach}/snps'
+    singularity:
+        r_container
+    threads:
+        25
+    log:
+        'output/logs/090_geo_survey/filter_snps_{dataset_approach}.log'
+    script:
+        'src/filter_snps.R'
+
+# FIX THIS, it is currently not working because the locus IDs given by stacks integrate alignments are 
+# too big for SNPrelate to handle
+# 08 Convert VCF to GDS format, keeping biallelic SNPs only
+rule convert_to_gds:
+    input:
+        'output/090_geo_survey/{dataset_approach}/pre_filter/populations.snps.vcf'
+    output:
+        'output/090_geo_survey/{dataset_approach}/snps.gds'
+    singularity:
+        r_container
+    threads:
+        25
+    log:
+        'output/logs/090_geo_survey/gds_convert_{dataset_approach}.log'
+    script:
+        'src/convert_gds.R'
+
+
+# Worked up to here
+
+
+#### Rules 01,02,03 and 06 are to map GBS reads then run stacks
+#### Rules 04, 045, 05 and 07 are to map the exiting catalog then integrate back into stacks
+
+# 07
 rule run_populations_mapped:
     input:
         aln_catalog = 'output/090_geo_survey/catalog_mapped/catalog.fa.gz',
@@ -66,10 +192,11 @@ rule run_populations_mapped:
         '-M {input.popmap} '
         '-t {threads} '
         '-r 0 '
+        '--vcf '
         '&> {log}'
 
 
-
+# 06
 rule run_populations_refbased:
     input:
         aln_catalog = 'output/090_geo_survey/ref_based/catalog.fa.gz',
@@ -93,17 +220,18 @@ rule run_populations_refbased:
         '-M {input.popmap} '
         '-t {threads} '
         '-r 0 '
+        '--vcf '
         '&> {log}'
 
 
 
-# Integrate alignment info back into stacks workflow. Using edited file because the original only outputs
+# 05 Integrate alignment info back into stacks workflow. Using edited file because the original only outputs
 # loci without a t in their name
 rule integrate_alignments:
     input:
         catalog =  'data/geo_survey_catalog/catalog.fa.gz',
         calls = 'data/geo_survey_catalog/catalog.calls',
-        bam = 'data/mapped_geo_cat.bam'
+        bam = 'output/090_geo_survey/bbmapped_full.bam'
     output:
         aln_catalog = 'output/090_geo_survey/catalog_mapped/catalog.fa.gz',
         tsv = 'output/090_geo_survey/catalog_mapped/locus_coordinates.tsv',
@@ -123,7 +251,18 @@ rule integrate_alignments:
         '-O {params.out_dir} '
         '&> {log}' 
 
+#045
+rule sam_to_bam:
+    input:
+        'output/090_geo_survey/bbmapped_full.sam'
+    output:
+        'output/090_geo_survey/bbmapped_full.bam'
+    singularity:
+        samtools_container
+    shell:
+        'samtools view -S -b {input} > {output}'
 
+# 04
 rule bbmap_full_catalog:
     input:
         genome = 'data/flye_denovo_full.racon.fasta',
@@ -146,6 +285,7 @@ rule bbmap_full_catalog:
         '&> {log}'
 
 
+# 03
 rule run_gstacks:
     input:
         bam_files = expand('output/090_geo_survey/{individual}_bwa.bam',
@@ -180,7 +320,7 @@ rule run_gstacks:
 
 
 
-# Sort the sam file by locus name, convert to bam. 
+# 02 Sort the sam file by locus name, convert to bam. 
 rule sort_sam:
     input:
         sam = 'output/090_geo_survey/{individual}_bwa.sam',
@@ -200,7 +340,7 @@ rule sort_sam:
         '&> {log}'
 
 
-# # Map GBS reads to the genome using BWA
+# # 01 Map GBS reads to the genome using BWA
 # # NOTE this step was run separately to this script (bwa difficulty) on the 143 fq.gz files (filtered indivs)
 # # and the logs for all indivs are combined into bwa_mapping_samples.log
 # rule map_tidied_reads_bwa:

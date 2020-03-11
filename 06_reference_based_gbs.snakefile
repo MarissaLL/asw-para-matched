@@ -67,8 +67,8 @@ rule target:
         'output/081_genome_mapped_stacks/populations.snps.vcf',
         'output/081_genome_mapped_stacks/whitelist.txt',
         'output/081_genome_mapped_stacks/final_popgen/populations.snps.vcf',
-        expand('trial/{bayescan_subset}.sel',
-               bayescan_subset=bayescan_subsets)
+        # expand('trial/{bayescan_subset}.sel',
+        #       bayescan_subset=bayescan_subsets)
         # 'output/081_genome_mapped_stacks/catalog.fa.gz',
         # 'output/081_genome_mapped_stacks/catalog.calls'
         # # expand('output/080_against_genome/{individual}_bwa.sam',
