@@ -35,7 +35,7 @@ rule target:
 #         fst_file = 'output/090_geo_survey/{dataset}/geo_survey_fst.txt'
 #         vcf = 'data/{dataset}/pop.vcf'
 #     output:
-            'sig_snp_list.txt'
+#            'sig_snp_list.txt'
 #     params:
 #         info = '{dataset}'
 #     script:

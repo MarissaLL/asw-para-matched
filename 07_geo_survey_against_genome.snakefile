@@ -39,8 +39,6 @@ rule target:
 		
 
 
-
-
 #### Rules 01,02,03 and 06 are to map GBS reads then run stacks
 #### Rules 04, 045, 05 and 07 are to map the exiting catalog then integrate back into stacks
 
