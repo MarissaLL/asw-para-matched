@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+
+def resolve_path(x):
+    return Path(x).resolve().as_posix()
+
+def get_best_run(wildcards):
+    co = checkpoints.find_best_run.get(
+        model=wildcards.model,
+        mig=wildcards.mig).output['outdir']
+    best_file = Path(co, 'best_is_{n}.txt') # might need .as_posix()
+    best_n = glob_wildcards(best_file).n
+    par_file = 'output/0xx_fastsimcoal/{model}.{mig}/run{n}/{model}.{mig}/{model}.{mig}_maxL.par'
+    return {'params': par_file.format(n=best_n)}
+
 
 ###########
 # GLOBALS #
@@ -14,143 +28,90 @@ r_container = 'shub://MarissaLL/singularity-containers:r_3.5.0'
 # RULES #
 #########
 
-models = ['model0_mig','model0_no_mig', 'model1_mig', 'model1_no_mig',
- 'model2_mig','model2_no_mig', 'model3_mig', 'model3_no_mig']
-runs = range(1,3,1)
-
-
 rule target:
-	input:
-		# expand('asw_{model}/asw_{model}.brent_lhoods',
-		# 	 	model = models)
-		# expand('{model}_run_{run}/asw_{model}.tpl',   # Should be able to remove
-		# 		model = models, run = runs),
-		expand('{model}_run_{run}/asw_{model}/asw_{model}.brent_lhoods',
-				model = models, run = runs),
-		'fsc_likelihoods.txt'
-		# expand('{model}_run_{run}/asw_{model}/asw_{model}.AIC',
-		# 		model = models, run = runs)
+    input:
+        expand('output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}/{model}.{mig}.bestlhoods',
+               model=['model0','model1','model2','model3','model4'],
+               mig=['no_mig', 'mig'],
+               run=range(1, 5, 1)),
+        expand('output/0xx_fastsimcoal/{model}.{mig}/test/seed.txt',
+                model=['model0','model1','model2','model3','model4'],
+                mig=['no_mig', 'mig'])
+     
 
 
 
 
+rule fsc_distribs:
+    input:
+        params = unpack(get_best_run), # this is 'output/0xx_fsc/{model}.{mig}/run{7}/..MaxL.par'
+        sfs = 'populations_jointMAFpop1_0.obs'
+    output:
+        # sfs = temp('output/0xx_fastsimcoal/{model}.{mig}/best_run/{model}.{mig}_jointMAFpop1_0.obs'),
+        out = 'output/0xx_fastsimcoal/{model}.{mig}/test/seed.txt' 
+    params:
+        wd = 'output/0xx_fastsimcoal/{model}.{mig}/test/'
+    shell:
+        'cp {input.sfs} {output.sfs} ; '
+        'cd {params.wd} ; '
+        'fsc26 '
+        '--ifile {input.params} ' 
+        '--numsims 100 '
+        '--msfs '
+      
 
-		
-### There needs to be an obs file called model_maxL_joint...obs in the dir
-# rule compare_likelihood_dists:
-	# input:
-		# 'populations_jointMAFpop1_0.obs'
-	# output:
-	# singularity:
-	# 	fastsimcoal_container
-	# shell:
-	# 	'fsc26 '
-	# 	'--ifile asw_{model}_maxL.par '
-	# 	'--numsims 1000000 '
-	# 	'-m -q -0'
-
-
-
-
-########### This requires that bestlikelihood and est files are in the same dir, 
-########### so needs some files moving around before it can just run
-######## Or just collect results first and modify this script
-# rule best_aic_calc:
-# 	input:
-# 		'{model}_run_{run}/asw_{model}/asw_{model}.bestlhoods'
-# 	output:
-# 		'{model}_run_{run}/asw_{model}/asw_{model}.AIC'
-# 	params:
-# 		model_prefix = '{model}_run_{run}/asw_{model}/asw_{model}'
-# 	singularity:
-# 		r_container
-# 	script:
-# 		'compareAIC.R {params.model_prefix}'
+# Find best run & calc AIC
+checkpoint find_best_run:
+    input:
+        bestlhoods = expand('output/0xx_fastsimcoal/{{model}}.{{mig}}/run{run}/{{model}}.{{mig}}/{{model}}.{{mig}}.bestlhoods',
+               run=range(1, 5, 1))
+    output:
+        outdir = directory('output/0xx_fastsimcoal/{{model}}.{{mig}}/best_run/')
+    log:
+        'output/logs/0xx_fastsimcoal/find_best_run_{{model}}.{{mig}}.log'
+    script: 
+        'src/find_best_run.R'
 
 
-rule collect_likelihoods_params:
-	input:
-		expand('{model}_run_{run}/asw_{model}/asw_{model}.bestlhoods',
-				model = models, run = runs)
-	output:
-		'fsc_likelihoods.txt'
-	shell:
-		'grep -v "MaxObsLhood" {input}  >> {output}'
-
-
-rule fastsimcoal:
-	input:
-		template = '{model}_run_{run}/asw_{model}.tpl',
-		est_file = '{model}_run_{run}/asw_{model}.est',
-		sfs = '{model}_run_{run}/asw_{model}_jointMAFpop1_0.obs'
-	output:
-		'{model}_run_{run}/asw_{model}/asw_{model}.brent_lhoods',
-		'{model}_run_{run}/asw_{model}/asw_{model}.bestlhoods',
-		'{model}_run_{run}/asw_{model}/asw_{model}_maxL.par',
-		'{model}_run_{run}/asw_{model}/asw_{model}.pv',
-		'{model}_run_{run}/asw_{model}/asw_{model}_1.simparam'
-	params:
-		numsims = 100,
-		current_run = '{model}_run_{run}',
-		model_prefix = 'asw_{model}'
-	singularity:
-		fastsimcoal_container
-	log:
-		'{model}_run_{run}/fsc.log'
-	shell:
-		'cd {params.current_run} && '
-		'fsc26 '
-		'--tplfile {params.model_prefix}.tpl '
-		'--numsims {params.numsims} '
-		'--msfs '
-		'--estfile {params.model_prefix}.est '
-		'--maxlhood '
-		'--numloops 60 '
-		'--cores 20 '
-		'&> fsc.log && '
-		'cd .. '
-
-
-rule input_dir_struct:
-	input:
-		template = 'src/fsc_models/asw_{model}.tpl',
-		est_file = 'src/fsc_models/asw_{model}.est',
-		sfs = 'populations_jointMAFpop1_0.obs'
-	output:
-		tpl = '{model}_run_{run}/asw_{model}.tpl',
-		est = '{model}_run_{run}/asw_{model}.est',
-		sfs = '{model}_run_{run}/asw_{model}_jointMAFpop1_0.obs'
-	shell:
-		'cp {input.template} {output.tpl} && '
-		'cp {input.est_file} {output.est} && '
-		'cp {input.sfs} {output.sfs}'
+### Run fsc. Why is this outputting the log in two places?
+rule fsc:
+    input:
+        tpl = 'src/fsc_models/{model}.{mig}.tpl',
+        est = 'src/fsc_models/{model}.{mig}.est',
+        sfs = 'populations_jointMAFpop1_0.obs'
+    output:
+        bestl = 'output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}/{model}.{mig}.bestlhoods',
+        maxlpar = 'output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}/{model}.{mig}_maxL.par',
+        tpl = temp('output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}.tpl'),
+        est = temp('output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}.est'),
+        sfs = temp('output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}_jointMAFpop1_0.obs')
+    params:
+        wd = 'output/0xx_fastsimcoal/{model}.{mig}/run{run}',
+        model_prefix = '{model}.{mig}',
+        # tpl = lambda wildcards,input: resolve_path(input.tpl),
+        # est = lambda wildcards,input: resolve_path(input.est),
+        numsims = 100
+    singularity:
+        fastsimcoal_container
+    log:
+        'fsc_{model}.{mig}.{run}.log'
+    shell:
+        'cp {input.tpl} {output.tpl} ; '
+        'cp {input.est} {output.est} ; '
+        'cp {input.sfs} {output.sfs} ; '
+        'cd {params.wd} ; '
+        'fsc26 '
+        # '--tplfile {params.tpl} ' # this will be an absolute path
+        # '--estfile {params.est} '  
+        '--tplfile {params.model_prefix}.tpl '
+        '--estfile {params.model_prefix}.est '
+        '--numsims {params.numsims} '
+        '--msfs '
+        '--maxlhood '
+        '--numloops 60 '
+        '--cores 2 '
+        '&> {log}'
 
 
 
-### Test in current WD
-# rule fastsimcoal:
-# 	input:
-# 		template = 'asw_{model}.tpl',
-# 		est_file = 'asw_{model}.est',
-# 		sfs = 'asw_{model}_jointMAFpop1_0.obs'
-# 	output:
-# 		'asw_{model}/asw_{model}.brent_lhoods',
-# 		'asw_{model}/asw_{model}.bestlhoods'
-# 	params:
-# 		numsims = 100,
-# 		model_prefix = 'asw_{model}'
-# 	singularity:
-# 		fastsimcoal_container
-# 	log:
-# 		'fsc_{model}.log'
-# 	shell:
-# 		'fsc26 '
-# 		'--tplfile {params.model_prefix}.tpl '
-# 		'--numsims {params.numsims} '
-# 		'--msfs '
-# 		'--estfile {params.model_prefix}.est '
-# 		'--maxlhood '
-# 		'--numloops 60 '
-# 		'--cores 20 '
-# 		'&> {log}'
 
