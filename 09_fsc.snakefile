@@ -9,10 +9,12 @@ def get_best_run(wildcards):
     co = checkpoints.find_best_run.get(
         model=wildcards.model,
         mig=wildcards.mig).output['outdir']
-    best_file = Path(co, 'best_is_{n}.txt') # might need .as_posix()
-    best_n = glob_wildcards(best_file).n
-    par_file = 'output/0xx_fastsimcoal/{model}.{mig}/run{n}/{model}.{mig}/{model}.{mig}_maxL.par'
-    return {'params': par_file.format(n=best_n)}
+    best_file = Path(co, 'best_is_{n}.txt').as_posix() # might need .as_posix()
+    best_n = glob_wildcards(best_file).n[0]
+    par_file = ('output/0xx_fastsimcoal/'
+                f'{wildcards.model}.{wildcards.mig}/run{{n}}/best/{wildcards.model}.{wildcards.mig}/seed.txt')
+    my_par_file = par_file.format(n=best_n)
+    return {'params': my_par_file}
 
 
 ###########
@@ -33,42 +35,58 @@ rule target:
         expand('output/0xx_fastsimcoal/{model}.{mig}/run{run}/{model}.{mig}/{model}.{mig}.bestlhoods',
                model=['model0','model1','model2','model3','model4'],
                mig=['no_mig', 'mig'],
-               run=range(1, 5, 1)),
-        expand('output/0xx_fastsimcoal/{model}.{mig}/test/seed.txt',
+               run=range(1, 101, 1)),
+        expand('output/0xx_fastsimcoal/{model}.{mig}/final_res/bestlhoods.maxlpar',
                 model=['model0','model1','model2','model3','model4'],
                 mig=['no_mig', 'mig'])
-     
 
 
+rule move_results:
+    input:
+        unpack(get_best_run)
+    output: 
+        'output/0xx_fastsimcoal/{model}.{mig}/final_res/bestlhoods.maxlpar'
+    shell:
+        'cp {input}  {output}'
 
 
+# Not fully sorted yet. Needs the .bestlhoods file not seed.txt
 rule fsc_distribs:
     input:
-        params = unpack(get_best_run), # this is 'output/0xx_fsc/{model}.{mig}/run{7}/..MaxL.par'
+        par_file = 'output/0xx_fastsimcoal/{model}.{mig}/run{n}/{model}.{mig}/{model}.{mig}_maxL.par', # this is 'output/0xx_fsc/{model}.{mig}/run{n}/..MaxL.par'
         sfs = 'populations_jointMAFpop1_0.obs'
     output:
-        # sfs = temp('output/0xx_fastsimcoal/{model}.{mig}/best_run/{model}.{mig}_jointMAFpop1_0.obs'),
-        out = 'output/0xx_fastsimcoal/{model}.{mig}/test/seed.txt' 
+        sfs = temp('output/0xx_fastsimcoal/{model}.{mig}/run{n}/best/{model}.{mig}_jointMAFpop1_0.obs'),
+        par_file = temp('output/0xx_fastsimcoal/{model}.{mig}/run{n}/best/{model}.{mig}/{model}.{mig}_maxL.par'),
+        out = 'output/0xx_fastsimcoal/{model}.{mig}/run{n}/best/{model}.{mig}/seed.txt' 
     params:
-        wd = 'output/0xx_fastsimcoal/{model}.{mig}/test/'
+        wd = 'output/0xx_fastsimcoal/{model}.{mig}/run{n}/best/',
+        model_prefix = '{model}.{mig}',
+        numsims = 1000000
+    singularity:
+        fastsimcoal_container
     shell:
+        'cp {input.par_file} {output.par_file} ; '
         'cp {input.sfs} {output.sfs} ; '
         'cd {params.wd} ; '
         'fsc26 '
-        '--ifile {input.params} ' 
-        '--numsims 100 '
+        '--ifile {params.model_prefix}_maxL.par ' 
+        '--numsims {params.numsims} '
         '--msfs '
+      
       
 
 # Find best run & calc AIC
 checkpoint find_best_run:
     input:
         bestlhoods = expand('output/0xx_fastsimcoal/{{model}}.{{mig}}/run{run}/{{model}}.{{mig}}/{{model}}.{{mig}}.bestlhoods',
-               run=range(1, 5, 1))
+               run=range(1, 101, 1))
     output:
-        outdir = directory('output/0xx_fastsimcoal/{{model}}.{{mig}}/best_run/')
+        outdir = directory('output/0xx_fastsimcoal/{model}.{mig}/best_run/')
+    singularity:
+        r_container
     log:
-        'output/logs/0xx_fastsimcoal/find_best_run_{{model}}.{{mig}}.log'
+        'output/logs/0xx_fastsimcoal/find_best_run_{model}.{mig}.log'
     script: 
         'src/find_best_run.R'
 
@@ -88,21 +106,17 @@ rule fsc:
     params:
         wd = 'output/0xx_fastsimcoal/{model}.{mig}/run{run}',
         model_prefix = '{model}.{mig}',
-        # tpl = lambda wildcards,input: resolve_path(input.tpl),
-        # est = lambda wildcards,input: resolve_path(input.est),
-        numsims = 100
+        numsims = 1000000
     singularity:
         fastsimcoal_container
-    log:
-        'fsc_{model}.{mig}.{run}.log'
+    # log:
+    #     'fsc_{model}.{mig}.{run}.log'
     shell:
         'cp {input.tpl} {output.tpl} ; '
         'cp {input.est} {output.est} ; '
         'cp {input.sfs} {output.sfs} ; '
         'cd {params.wd} ; '
         'fsc26 '
-        # '--tplfile {params.tpl} ' # this will be an absolute path
-        # '--estfile {params.est} '  
         '--tplfile {params.model_prefix}.tpl '
         '--estfile {params.model_prefix}.est '
         '--numsims {params.numsims} '
